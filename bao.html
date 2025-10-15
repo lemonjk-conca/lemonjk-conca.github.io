@@ -1,0 +1,118 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8">
+  <title>Báo điện tử học tập </title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      margin: 0;
+      background-color: #f2f2f2;
+    }
+    /* Thanh trên cùng */
+    .topbar {
+      background-color: #fff;
+      border-bottom: 2px solid #ccc;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 10px 40px;
+    }
+    .brand img {
+      height: 45px;
+    }
+    .search input {
+      padding: 6px;
+      border-radius: 5px;
+      border: 1px solid #aaa;
+    }
+    .search button {
+      padding: 6px 10px;
+      border-radius: 5px;
+      border: none;
+      background-color: #a30000;
+      color: white;
+      cursor: pointer;
+    }
+    /* Menu chính */
+    .menu {
+      background-color: #a30000;
+      padding: 10px;
+      text-align: center;
+    }
+    .menu a {
+      color: white;
+      text-decoration: none;
+      margin: 0 15px;
+      font-weight: bold;
+    }
+    .menu a:hover {
+      text-decoration: underline;
+    }
+    /* Bài viết */
+    .container {
+      width: 80%;
+      margin: 20px auto;
+      background-color: white;
+      padding: 20px;
+      border-radius: 10px;
+      box-shadow: 0 0 5px rgba(0,0,0,0.2);
+    }
+    .container h2 {
+      color: #a30000;
+    }
+    .container img {
+      width: 100%;
+      border-radius: 10px;
+      margin-top: 10px;
+    }
+    .footer {
+      background-color: #a30000;
+      color: white;
+      text-align: center;
+      padding: 15px;
+      margin-top: 30px;
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Thanh trên cùng -->
+  <div class="topbar">
+    <div class="brand">
+      <a href="index.html">
+        <img src="https://upload.wikimedia.org/wikipedia/commons/thumb/9/99/VnExpress_logo.svg/512px-VnExpress_logo.svg.png" 
+             alt="VNExpress ">
+      </a>
+    </div>
+    <div class="search">
+      <input type="text" placeholder="Tìm bài viết...">
+      <button>Tìm</button>
+    </div>
+  </div>
+
+  <!-- Menu -->
+  <div class="menu">
+    <a href="#">Trang chủ</a>
+    <a href="#">Thời sự</a>
+    <a href="#">Thế giới</a>
+    <a href="#">Kinh doanh</a>
+    <a href="#">Giải trí</a>
+    <a href="#">Thể thao</a>
+    <a href="#">Công nghệ</a>
+  </div>
+
+  <!-- Nội dung -->
+  <div class="container">
+    <h2>Lai Châu là số mấy?</h2>
+    <p><b>Ngày đăng:</b> 15/10/2025</p>
+    <img src="https://picsum.photos/900/400" alt="Ảnh minh họa">
+    <p> Trịnh Phương với Mai Trang trêu 36 ít thôi, t hơi bị " chiến" đấy</p>
+  </div>
+
+  <div class="footer">
+    © 2025 - VNExpress | Liên hệ: 0913231008
+  </div>
+
+</body>
+</html>
