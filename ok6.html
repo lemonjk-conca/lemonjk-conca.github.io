@@ -1,0 +1,420 @@
+<!doctype html>
+<html lang="vi">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Chicken Blaster — Single File</title>
+  <style>
+    *{box-sizing:border-box}
+    body{
+      margin:0;
+      font-family:Inter, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial;
+      display:flex;
+      flex-direction:column;
+      align-items:center;
+      background:linear-gradient(180deg,#080826,#06102a);
+      color:#fff;
+      gap:8px;
+      padding:12px;
+    }
+    #header{
+      width:900px;
+      max-width:96vw;
+      display:flex;
+      justify-content:space-between;
+      align-items:center;
+      gap:12px;
+    }
+    h1{margin:0;font-size:20px}
+    #controls button{
+      padding:8px 12px;
+      margin-left:6px;
+      border-radius:6px;
+      border:none;
+      cursor:pointer;
+      background:#ffb547;color:#000;font-weight:700;
+    }
+    #hud{display:flex;gap:12px;align-items:center;font-weight:600}
+    canvas{
+      width:900px;
+      max-width:96vw;
+      height:600px;
+      border-radius:8px;
+      background:linear-gradient(180deg,#003851,#00131a);
+      box-shadow:0 8px 30px #0008;
+      display:block;
+    }
+    #footer{width:900px;max-width:96vw;text-align:center;color:#cfe8ff66;font-size:13px}
+    /* small responsive tweak */
+    @media (max-width:980px){
+      #header{flex-direction:column;align-items:flex-start}
+    }
+  </style>
+</head>
+<body>
+  <div id="header">
+    <h1>Chicken Blaster</h1>
+    <div id="controls">
+      <button id="startBtn">Start Game</button>
+      <button id="restartBtn">Restart</button>
+    </div>
+    <div id="hud">
+      <div>Score: <span id="score">0</span></div>
+      <div>Lives: <span id="lives">3</span></div>
+      <div>Wave: <span id="wave">0</span></div>
+    </div>
+  </div>
+
+  <canvas id="game" width="900" height="600"></canvas>
+
+  <div id="footer">Controls: ← → or A/D = move, Space = shoot. Click canvas or press Start to enable sound.</div>
+
+  <script>
+  // Chicken Blaster — single-file version
+  (function() {
+    const canvas = document.getElementById('game');
+    const ctx = canvas.getContext('2d');
+
+    // UI
+    const startBtn = document.getElementById('startBtn');
+    const restartBtn = document.getElementById('restartBtn');
+    const scoreEl = document.getElementById('score');
+    const livesEl = document.getElementById('lives');
+    const waveEl = document.getElementById('wave');
+
+    // Audio (WebAudio)
+    const AudioContext = window.AudioContext || window.webkitAudioContext;
+    const audioCtx = new AudioContext();
+    function beep(freq=440, time=0.08, vol=0.08, type='sine') {
+      try {
+        if (audioCtx.state === 'suspended') audioCtx.resume();
+        const o = audioCtx.createOscillator();
+        const g = audioCtx.createGain();
+        o.type = type;
+        o.frequency.value = freq;
+        g.gain.value = vol;
+        o.connect(g); g.connect(audioCtx.destination);
+        o.start();
+        g.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + time);
+        o.stop(audioCtx.currentTime + time + 0.02);
+      } catch (e) { /* ignore audio errors */ }
+    }
+
+    // Game constants
+    const WIDTH = canvas.width;
+    const HEIGHT = canvas.height;
+
+    // Input
+    const keys = {};
+    window.addEventListener('keydown', e => { keys[e.key] = true; });
+    window.addEventListener('keyup', e => { keys[e.key] = false; });
+
+    // Player
+    const player = {
+      x: WIDTH/2, y: HEIGHT - 60, w: 36, h: 18,
+      vx: 0, speed: 6, cooldown: 0, bullets: [], lives: 3, score: 0
+    };
+
+    // Game state
+    let running = false;
+    let wave = 0;
+    let chickens = [];
+    let bullets = [];
+    let spawnTimer = 0;
+    let waveClearedDelay = 0;
+
+    // Helpers
+    function rectIntersect(a,b){
+      return a.x < b.x + b.w && a.x + a.w > b.x && a.y < b.y + b.h && a.y + a.h > b.y;
+    }
+
+    function startGame() {
+      running = true;
+      wave = 0;
+      chickens = [];
+      bullets = [];
+      player.x = WIDTH/2;
+      player.y = HEIGHT - 60;
+      player.vx = 0;
+      player.cooldown = 0;
+      player.lives = 3;
+      player.score = 0;
+      spawnWave();
+      updateHUD();
+      lastTime = performance.now();
+      if (audioCtx.state === 'suspended') audioCtx.resume();
+      loop();
+    }
+
+    function restartGame() {
+      running = false;
+      startGame();
+    }
+
+    function updateHUD() {
+      scoreEl.textContent = player.score;
+      livesEl.textContent = player.lives;
+      waveEl.textContent = wave;
+    }
+
+    // spawn a wave: create a flock of chickens with varying behavior
+    function spawnWave() {
+      wave++;
+      chickens = [];
+      const rows = Math.min(5, 2 + Math.floor(wave/2));
+      const cols = 8;
+      const baseY = 80;
+      for (let r = 0; r < rows; r++) {
+        for (let c = 0; c < cols; c++) {
+          const spacingX = 64;
+          const x = 80 + c * spacingX + (r%2 ? 32 : 0);
+          const y = baseY + r * 48;
+          chickens.push({
+            x, y, w: 32, h: 24,
+            vx: (Math.random() < 0.5 ? -1 : 1) * (1 + wave*0.08),
+            baseX: x,
+            alive: true,
+            wobble: Math.random()*2*Math.PI,
+            type: 'chicken',
+            hp: 1 + Math.floor(wave/4)
+          });
+        }
+      }
+      spawnTimer = 0;
+      waveClearedDelay = 0;
+      updateHUD();
+    }
+
+    // spawn random hungry chicken (bonus)
+    function spawnBonus() {
+      chickens.push({
+        x: Math.random()* (WIDTH-120) + 60,
+        y: 40,
+        w: 34, h: 26,
+        vx: (Math.random() < 0.5 ? -1 : 1) * (2 + Math.random()*2),
+        baseX: null, wobble: 0, alive: true, type: 'bonus', hp:1
+      });
+    }
+
+    // player shoot
+    function playerShoot() {
+      if (player.cooldown > 0) return;
+      player.cooldown = 0.25; // seconds
+      bullets.push({ x: player.x, y: player.y - 12, vx: 0, vy: -10, w:6, h:10, owner:'player' });
+      beep(900, 0.06, 0.08, 'triangle');
+    }
+
+    // update
+    function update(dt) {
+      if (!running) return;
+
+      // player movement
+      const left = keys['ArrowLeft'] || keys['a'];
+      const right = keys['ArrowRight'] || keys['d'];
+      if (left && !right) player.vx = -player.speed;
+      else if (right && !left) player.vx = player.speed;
+      else player.vx = 0;
+      player.x += player.vx;
+      player.x = Math.max(20, Math.min(WIDTH - 20, player.x));
+
+      // shooting
+      if ((keys[' '] || keys['Spacebar'] || keys['Space']) && player.cooldown <= 0) {
+        playerShoot();
+      }
+      if (player.cooldown > 0) player.cooldown -= dt;
+
+      // update bullets
+      for (let i = bullets.length - 1; i >= 0; i--) {
+        const b = bullets[i];
+        b.x += b.vx;
+        b.y += b.vy;
+        // remove if off screen
+        if (b.y < -20 || b.y > HEIGHT + 20 || b.x < -20 || b.x > WIDTH + 20) bullets.splice(i,1);
+      }
+
+      // update chickens
+      let aliveCount = 0;
+      for (const ch of chickens) {
+        if (!ch.alive) continue;
+        aliveCount++;
+        // wobble vertical motion
+        ch.wobble += dt * (1 + wave*0.05);
+        ch.y += Math.sin(ch.wobble) * 0.6;
+        // horizontal patrol or drifting
+        if (ch.baseX !== null) {
+          ch.x += ch.vx * dt * 60;
+          // bounds: bounce between edges with some margin
+          if (ch.x < 40) { ch.x = 40; ch.vx *= -1; }
+          if (ch.x > WIDTH - 40) { ch.x = WIDTH - 40; ch.vx *= -1; }
+        } else {
+          // bonus: move freely and bounce
+          ch.x += ch.vx * dt * 60;
+          if (ch.x < 20 || ch.x > WIDTH - 20) ch.vx *= -1;
+        }
+      }
+
+      // detect collisions bullets <-> chickens
+      for (let i = bullets.length - 1; i >= 0; i--) {
+        const b = bullets[i];
+        if (b.owner !== 'player') continue;
+        for (const ch of chickens) {
+          if (!ch.alive) continue;
+          const chRect = { x: ch.x - ch.w/2, y: ch.y - ch.h/2, w: ch.w, h: ch.h };
+          const bRect = { x: b.x - b.w/2, y: b.y - b.h/2, w: b.w, h: b.h };
+          if (rectIntersect(chRect, bRect)) {
+            // hit
+            ch.hp -= 1;
+            bullets.splice(i,1);
+            if (ch.hp <= 0) {
+              ch.alive = false;
+              player.score += (ch.type === 'bonus' ? 500 : 100);
+              beep(1200, 0.06, 0.12, 'sine');
+            } else {
+              player.score += 50;
+              beep(900, 0.04, 0.08, 'triangle');
+            }
+            updateHUD();
+            break;
+          }
+        }
+      }
+
+      // chickens hitting player (descend/graze)
+      for (const ch of chickens) {
+        if (!ch.alive) continue;
+        const chRect = { x: ch.x - ch.w/2, y: ch.y - ch.h/2, w: ch.w, h: ch.h };
+        const pRect = { x: player.x - player.w/2, y: player.y - player.h/2, w: player.w, h: player.h };
+        if (rectIntersect(chRect, pRect)) {
+          // player hit
+          ch.alive = false;
+          player.lives -= 1;
+          player.score = Math.max(0, player.score - 50);
+          beep(180, 0.12, 0.12, 'sawtooth');
+          updateHUD();
+          // knockback
+          player.x = Math.max(40, player.x - 40);
+          if (player.lives <= 0) {
+            running = false;
+            setTimeout(()=> {
+              alert('Game Over! Score: ' + player.score);
+            }, 50);
+          }
+        }
+      }
+
+      // if wave cleared, delay then spawn next
+      if (aliveCount === 0) {
+        waveClearedDelay += dt;
+        if (waveClearedDelay > 0.9) {
+          // escalate difficulty, occasionally spawn bonus
+          if (Math.random() < 0.28) spawnBonus();
+          spawnWave();
+        }
+      }
+
+      // periodic bonus spawns
+      spawnTimer += dt;
+      if (spawnTimer > Math.max(4 - wave*0.1, 1.5)) {
+        if (Math.random() < 0.5) spawnBonus();
+        spawnTimer = 0;
+      }
+
+      // remove dead chickens occasionally (clean)
+      chickens = chickens.filter(c => c.alive || (Math.random() > 0.999));
+
+      // update HUD
+      updateHUD();
+    }
+
+    // draw
+    function draw() {
+      // clear background
+      ctx.clearRect(0,0,WIDTH,HEIGHT);
+      // backdrop gradient handled by CSS; draw ground and UI elements
+      // sky glow
+      ctx.fillStyle = '#002b3a';
+      ctx.fillRect(0, HEIGHT - 80, WIDTH, 80);
+
+      // draw player (triangle ship)
+      ctx.save();
+      ctx.translate(player.x, player.y);
+      ctx.fillStyle = '#ffd347';
+      ctx.beginPath();
+      ctx.moveTo(0, -player.h/2);
+      ctx.lineTo(-player.w/2, player.h/2);
+      ctx.lineTo(player.w/2, player.h/2);
+      ctx.closePath();
+      ctx.fill();
+      ctx.restore();
+
+      // bullets
+      ctx.fillStyle = '#fff';
+      for (const b of bullets) {
+        ctx.fillRect(b.x - b.w/2, b.y - b.h/2, b.w, b.h);
+      }
+
+      // chickens
+      for (const ch of chickens) {
+        if (!ch.alive) continue;
+        const x = ch.x, y = ch.y;
+        // body
+        ctx.fillStyle = ch.type === 'bonus' ? '#ff7fbf' : '#ffffff';
+        ctx.fillRect(x - ch.w/2, y - ch.h/2, ch.w, ch.h);
+        // eye
+        ctx.fillStyle = '#000';
+        ctx.fillRect(x + 6, y - 6, 6, 6);
+      }
+
+      // HUD overlay inside canvas
+      ctx.fillStyle = 'rgba(255,255,255,0.04)';
+      ctx.fillRect(0,0,WIDTH,44);
+      ctx.fillStyle = '#fff';
+      ctx.font = '16px sans-serif';
+      ctx.fillText('Score: ' + player.score, 12, 28);
+      ctx.fillText('Lives: ' + player.lives, 140, 28);
+      ctx.fillText('Wave: ' + wave, 260, 28);
+    }
+
+    // main loop
+    let lastTime = performance.now();
+    function loop() {
+      if (!running) return;
+      const now = performance.now();
+      const dt = Math.min(0.04, (now - lastTime) / 1000); // cap dt
+      lastTime = now;
+      update(dt);
+      draw();
+      requestAnimationFrame(loop);
+    }
+
+    // event bindings
+    startBtn.addEventListener('click', () => {
+      if (audioCtx.state === 'suspended') audioCtx.resume();
+      startGame();
+    });
+    restartBtn.addEventListener('click', () => {
+      if (audioCtx.state === 'suspended') audioCtx.resume();
+      restartGame();
+    });
+
+    // enable sound on canvas click
+    canvas.addEventListener('click', () => {
+      if (audioCtx.state === 'suspended') audioCtx.resume();
+      // focus for keyboard
+      canvas.tabIndex = 1000;
+      canvas.focus();
+    });
+
+    // Prevent arrow keys from scrolling page while playing
+    window.addEventListener('keydown', function(e) {
+      const blocked = ['ArrowUp','ArrowDown','ArrowLeft','ArrowRight',' '];
+      if (blocked.includes(e.key)) e.preventDefault();
+    }, {passive:false});
+
+    // init a first wave but don't run loop until Start pressed
+    spawnWave();
+    draw();
+  })();
+  </script>
+</body>
+</html>
