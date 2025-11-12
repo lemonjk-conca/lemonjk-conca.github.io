@@ -1,0 +1,551 @@
+<!doctype html>
+<html lang="vi">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>Game Lái Xe Nhẹ (HTML + JS)</title>
+<style>
+  :root{
+    --road-width: 260px;
+    --canvas-width: 360px;
+    --canvas-height: 640px;
+  }
+  html,body{
+    height:100%;
+    margin:0;
+    font-family: system-ui, -apple-system, "Segoe UI", Roboto, "Noto Sans", "Helvetica Neue", Arial;
+    background: linear-gradient(#87CEEB,#bfe7ff 60%);
+    display:flex;
+    align-items:center;
+    justify-content:center;
+  }
+
+  #gameWrap{
+    position:relative;
+    width:var(--canvas-width);
+    box-shadow:0 10px 30px rgba(0,0,0,0.25);
+    border-radius:12px;
+    overflow:hidden;
+    background:#111;
+  }
+
+  canvas{
+    display:block;
+    width:100%;
+    height:auto;
+    background:transparent;
+  }
+
+  .ui{
+    color:#fff;
+    padding:10px;
+    position:absolute;
+    left:0;
+    right:0;
+    z-index:10;
+    pointer-events:none;
+    user-select:none;
+  }
+
+  #hud{
+    display:flex;
+    justify-content:space-between;
+    align-items:center;
+    font-weight:600;
+    font-size:14px;
+    pointer-events:none;
+  }
+
+  #messages{
+    text-align:center;
+    margin-top:8px;
+    font-size:13px;
+    opacity:0.95;
+  }
+
+  #controls{
+    position:absolute;
+    bottom:10px;
+    left:50%;
+    transform:translateX(-50%);
+    display:flex;
+    gap:10px;
+    pointer-events:auto;
+  }
+
+  .btn{
+    background:rgba(0,0,0,0.45);
+    color:#fff;
+    border:1px solid rgba(255,255,255,0.08);
+    padding:10px 12px;
+    border-radius:8px;
+    box-shadow:0 4px 8px rgba(0,0,0,0.4);
+    font-weight:700;
+    touch-action:manipulation;
+    user-select:none;
+  }
+
+  .direction-pad{
+    display:flex;
+    gap:8px;
+  }
+  .dir{
+    width:54px;height:54px;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    border-radius:8px;
+    background:linear-gradient(180deg,#222,#111);
+    border:1px solid rgba(255,255,255,0.06);
+    font-size:18px;
+  }
+
+  #startOverlay{
+    position:absolute;
+    inset:0;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    background:linear-gradient(rgba(0,0,0,0.35),rgba(0,0,0,0.45));
+    z-index:20;
+    pointer-events:auto;
+    flex-direction:column;
+    gap:12px;
+  }
+
+  #startOverlay h1{
+    margin:0;
+    color:#fff;
+    font-size:20px;
+    letter-spacing:0.6px;
+  }
+
+  #footerNote{
+    font-size:12px;
+    color:#ddd;
+    opacity:0.9;
+  }
+
+  /* mobile friendly, hide large padding on small screens */
+  @media (max-width:420px){
+    :root{ --canvas-width:320px; --canvas-height:560px;}
+  }
+</style>
+</head>
+<body>
+<div id="gameWrap" role="application" aria-label="Game lái xe đơn giản">
+  <canvas id="gameCanvas" width="360" height="640"></canvas>
+
+  <div class="ui">
+    <div id="hud">
+      <div>Điểm: <span id="score">0</span></div>
+      <div>Tốc độ: <span id="speedText">0</span></div>
+    </div>
+    <div id="messages">Dùng phím ← → để lái, ↑ để tăng tốc. Hoặc dùng các nút chạm.</div>
+  </div>
+
+  <div id="controls" aria-hidden="false">
+    <div class="direction-pad" aria-hidden="true">
+      <div id="leftBtn" class="dir btn" role="button" aria-label="Quay trái">◀</div>
+      <div id="rightBtn" class="dir btn" role="button" aria-label="Quay phải">▶</div>
+    </div>
+    <div>
+      <button id="accBtn" class="btn" aria-label="Tăng tốc">Tăng</button>
+      <button id="brakeBtn" class="btn" aria-label="Phanh">Phanh</button>
+    </div>
+  </div>
+
+  <div id="startOverlay" role="dialog" aria-modal="true">
+    <h1>Game Lái Xe Nhỏ</h1>
+    <div id="footerNote">Tránh chướng ngại vật, sống càng lâu càng nhiều điểm</div>
+    <div style="display:flex;gap:8px;margin-top:10px">
+      <button id="startBtn" class="btn">Bắt đầu</button>
+      <button id="demoBtn" class="btn">Chơi mẫu (chậm)</button>
+    </div>
+    <div style="font-size:12px;color:#eee;opacity:0.9;margin-top:8px">Phím: ← → ↑ ↓ / Touch: các nút bên dưới</div>
+  </div>
+</div>
+
+<script>
+/*
+  Game lái xe đơn giản bằng HTML Canvas.
+  - Bản này dùng vecto đơn giản (hình chữ nhật/ tam giác) để vẽ xe.
+  - Điều khiển: phím mũi tên (← → để lái, ↑ tăng tốc, ↓ phanh)
+  - Nút chạm cũng hỗ trợ cho điện thoại.
+  - Điểm theo thời gian sống sót. Va chạm -> kết thúc.
+  - Lưu điểm cao vào localStorage.
+*/
+
+/* ----- Thiết lập cơ bản ----- */
+const canvas = document.getElementById('gameCanvas');
+const ctx = canvas.getContext('2d', { alpha: false });
+
+const W = canvas.width;
+const H = canvas.height;
+
+const roadW = 260;
+const roadX = (W - roadW) / 2;
+const laneMarkW = 6;
+
+/* UI elements */
+const scoreEl = document.getElementById('score');
+const speedText = document.getElementById('speedText');
+const startOverlay = document.getElementById('startOverlay');
+const startBtn = document.getElementById('startBtn');
+const demoBtn = document.getElementById('demoBtn');
+
+let running = false;
+let paused = false;
+
+/* ----- Player vehicle ----- */
+const player = {
+  x: W/2,
+  y: H - 110,
+  w: 28,
+  h: 48,
+  angle: 0, // not used for physics much, just for drawing tilt
+  speed: 0,
+  maxSpeed: 7, // pixels per frame
+  accel: 0.16,
+  decel: 0.25,
+  turnSpeed: 2.4,
+  color: '#ff4757'
+};
+
+/* Obstacles (xe khác, chướng ngại vật) */
+const obstacles = [];
+const obstacleTypes = ['car','cone','barrel'];
+let spawnTimer = 0;
+let spawnInterval = 80; // frames
+let globalTick = 0;
+
+let score = 0;
+let highScore = parseInt(localStorage.getItem('car_highscore') || '0', 10);
+
+/* Input state */
+const keys = {
+  left:false, right:false, up:false, down:false
+};
+
+/* Touch button bindings */
+document.getElementById('leftBtn').addEventListener('pointerdown', ()=>keys.left=true);
+document.getElementById('leftBtn').addEventListener('pointerup', ()=>keys.left=false);
+document.getElementById('leftBtn').addEventListener('pointercancel', ()=>keys.left=false);
+
+document.getElementById('rightBtn').addEventListener('pointerdown', ()=>keys.right=true);
+document.getElementById('rightBtn').addEventListener('pointerup', ()=>keys.right=false);
+document.getElementById('rightBtn').addEventListener('pointercancel', ()=>keys.right=false);
+
+document.getElementById('accBtn').addEventListener('pointerdown', ()=>keys.up=true);
+document.getElementById('accBtn').addEventListener('pointerup', ()=>keys.up=false);
+document.getElementById('brakeBtn').addEventListener('pointerdown', ()=>keys.down=true);
+document.getElementById('brakeBtn').addEventListener('pointerup', ()=>keys.down=false);
+
+/* Keyboard handling */
+window.addEventListener('keydown', (e)=>{
+  if(e.key === 'ArrowLeft' || e.key === 'a') keys.left = true;
+  if(e.key === 'ArrowRight' || e.key === 'd') keys.right = true;
+  if(e.key === 'ArrowUp' || e.key === 'w') keys.up = true;
+  if(e.key === 'ArrowDown' || e.key === 's') keys.down = true;
+  if(e.key === 'p') paused = !paused;
+  // prevent default scroll on arrow keys
+  if(['ArrowLeft','ArrowRight','ArrowUp','ArrowDown',' '].includes(e.key)) e.preventDefault();
+});
+
+window.addEventListener('keyup', (e)=>{
+  if(e.key === 'ArrowLeft' || e.key === 'a') keys.left = false;
+  if(e.key === 'ArrowRight' || e.key === 'd') keys.right = false;
+  if(e.key === 'ArrowUp' || e.key === 'w') keys.up = false;
+  if(e.key === 'ArrowDown' || e.key === 's') keys.down = false;
+});
+
+/* Start / Demo buttons */
+startBtn.addEventListener('click', ()=>{
+  startGame(false);
+});
+demoBtn.addEventListener('click', ()=>{
+  startGame(true);
+});
+
+/* ----- Game lifecycle ----- */
+function startGame(demo=false){
+  // reset
+  obstacles.length = 0;
+  spawnTimer = 0;
+  globalTick = 0;
+  score = 0;
+  player.x = W/2;
+  player.y = H - 110;
+  player.speed = demo ? 2.6 : 0;
+  player.maxSpeed = demo ? 3.5 : 7;
+  running = true;
+  paused = false;
+  startOverlay.style.display = 'none';
+  if(demo){
+    // demo mode: auto-steer a little
+    player.autoPilot = true;
+  } else {
+    player.autoPilot = false;
+  }
+  requestAnimationFrame(loop);
+}
+
+function endGame(){
+  running = false;
+  player.autoPilot = false;
+  startOverlay.style.display = 'flex';
+  // show result
+  document.getElementById('footerNote').textContent = `Bạn chết! Điểm: ${Math.floor(score)}  |  Cao nhất: ${highScore}`;
+  if(Math.floor(score) > highScore){
+    highScore = Math.floor(score);
+    localStorage.setItem('car_highscore', highScore);
+    document.getElementById('footerNote').textContent += " 🎉 Mới!";
+  }
+}
+
+/* ----- Helpers ----- */
+function rand(min,max){ return Math.random()*(max-min)+min; }
+
+function spawnObstacle(){
+  // create obstacle inside the road
+  const type = obstacleTypes[Math.floor(Math.random()*obstacleTypes.length)];
+  const w = type === 'car' ? rand(28,46) : rand(16,28);
+  const h = type === 'car' ? rand(44,62) : rand(16,28);
+  const x = rand(roadX + 12, roadX + roadW - 12 - w);
+  const y = -h - rand(10,200);
+  const speed = rand(1.5, 3.2) + Math.min(globalTick/2000, 3.0); // speed of obstacle moving down (relative to background)
+  obstacles.push({x,y,w,h,type,speed,angle:0});
+}
+
+/* Collision detection (AABB) */
+function checkCollision(a,b){
+  return !(a.x > b.x + b.w || a.x + a.w < b.x || a.y > b.y + b.h || a.y + a.h < b.y);
+}
+
+/* ----- Rendering ----- */
+function drawBackground(offset){
+  // sky already via body; draw road
+  ctx.fillStyle = '#505050';
+  ctx.fillRect(roadX, 0, roadW, H);
+  // roadside grass
+  ctx.fillStyle = '#2b7a2b';
+  ctx.fillRect(0,0,roadX,H);
+  ctx.fillRect(roadX + roadW,0,W - (roadX + roadW),H);
+
+  // dashed center line
+  ctx.fillStyle = '#e9e9e9';
+  const dashH = 34;
+  const gap = 26;
+  let y = (offset % (dashH + gap)) - (dashH + gap);
+  while(y < H){
+    ctx.fillRect(W/2 - laneMarkW/2, y, laneMarkW, dashH);
+    y += dashH + gap;
+  }
+
+  // side lane lines
+  ctx.fillStyle = 'rgba(255,255,255,0.08)';
+  ctx.fillRect(roadX + 6, 0, 2, H);
+  ctx.fillRect(roadX + roadW - 8, 0, 2, H);
+
+  // subtle road texture lines
+  ctx.fillStyle = 'rgba(0,0,0,0.06)';
+  for(let i=0;i<14;i++){
+    ctx.fillRect(roadX + 6 + i*(roadW-12)/14, (offset*0.4 + i*60)%H, 2, 40);
+  }
+}
+
+function drawPlayer(){
+  ctx.save();
+  ctx.translate(player.x + player.w/2, player.y + player.h/2);
+  ctx.rotate(player.angle * Math.PI/180);
+  // body
+  ctx.fillStyle = player.color;
+  roundRect(ctx, -player.w/2, -player.h/2, player.w, player.h, 6);
+  ctx.fill();
+  // windows
+  ctx.fillStyle = 'rgba(255,255,255,0.12)';
+  ctx.fillRect(-player.w/4, -player.h/2 + 6, player.w/2, player.h/3);
+  // wheels
+  ctx.fillStyle = '#111';
+  const wheelW = 6, wheelH = 10;
+  ctx.fillRect(-player.w/2 - 1, -player.h/2 + 6, wheelW, wheelH);
+  ctx.fillRect(player.w/2 - wheelW + 1, -player.h/2 + 6, wheelW, wheelH);
+  ctx.fillRect(-player.w/2 - 1, player.h/2 - wheelH - 6, wheelW, wheelH);
+  ctx.fillRect(player.w/2 - wheelW + 1, player.h/2 - wheelH - 6, wheelW, wheelH);
+  ctx.restore();
+}
+
+function roundRect(ctx,x,y,w,h,r){
+  const radius = r || 4;
+  ctx.beginPath();
+  ctx.moveTo(x+radius,y);
+  ctx.arcTo(x+w,y,x+w,y+h,radius);
+  ctx.arcTo(x+w,y+h,x,y+h,radius);
+  ctx.arcTo(x,y+h,x,y,radius);
+  ctx.arcTo(x,y,x+w,y,radius);
+  ctx.closePath();
+}
+
+/* Draw obstacle types */
+function drawObstacle(o){
+  if(o.type === 'car'){
+    ctx.save();
+    ctx.translate(o.x + o.w/2, o.y + o.h/2);
+    ctx.rotate((o.angle||0)*Math.PI/180);
+    ctx.fillStyle = '#2f3542';
+    roundRect(ctx, -o.w/2, -o.h/2, o.w, o.h, 6);
+    ctx.fill();
+    // windows
+    ctx.fillStyle = 'rgba(255,255,255,0.12)';
+    ctx.fillRect(-o.w/4, -o.h/2 + 6, o.w/2, o.h/3);
+    ctx.restore();
+  } else if(o.type === 'cone'){
+    // cone as triangle
+    ctx.fillStyle = '#ff7f1a';
+    ctx.beginPath();
+    ctx.moveTo(o.x + o.w/2, o.y);
+    ctx.lineTo(o.x + o.w, o.y + o.h);
+    ctx.lineTo(o.x, o.y + o.h);
+    ctx.closePath();
+    ctx.fill();
+    ctx.fillStyle = '#fff7';
+    ctx.fillRect(o.x + o.w*0.15, o.y + o.h*0.55, o.w*0.7, o.h*0.15);
+  } else {
+    // barrel
+    ctx.fillStyle = '#a0522d';
+    roundRect(ctx, o.x, o.y, o.w, o.h, 6);
+    ctx.fill();
+    ctx.fillStyle = '#0005';
+    ctx.fillRect(o.x+2, o.y+2, o.w-4, o.h-4);
+  }
+}
+
+/* ----- Main loop ----- */
+function loop(){
+  if(!running) return;
+  if(paused){
+    requestAnimationFrame(loop);
+    return;
+  }
+
+  globalTick++;
+  // background offset to create movement illusion
+  const bgOffset = globalTick * (player.speed*2 + 1);
+
+  // update spawn timer
+  spawnTimer++;
+  // spawn faster when speed high
+  const spawnRate = Math.max(48, spawnInterval - Math.floor(player.speed*6));
+  if(spawnTimer > spawnRate){
+    spawnTimer = 0;
+    spawnObstacle();
+  }
+
+  // update obstacles position (they move downward)
+  for(let i=obstacles.length-1;i>=0;i--){
+    const o = obstacles[i];
+    o.y += o.speed + player.speed*0.6;
+    // small horizontal wobble for variety
+    o.x += Math.sin((o.y + i*23)/70) * 0.4;
+    // remove if off-screen
+    if(o.y > H + 120) obstacles.splice(i,1);
+  }
+
+  // player control
+  if(player.autoPilot){
+    // demo auto steer to avoid obstacles a little
+    // if obstacle directly in front try to move away
+    const threat = obstacles.find(o => o.y > player.y - 260 && o.y < player.y + 40 && Math.abs((o.x + o.w/2) - (player.x + player.w/2)) < 70);
+    if(threat){
+      if((threat.x + threat.w/2) < player.x + player.w/2) { keys.right = true; keys.left = false; }
+      else { keys.left = true; keys.right = false; }
+    } else {
+      // gentle centering
+      if(player.x + player.w/2 < W/2 - 6) { keys.right = true; keys.left = false; }
+      else if(player.x + player.w/2 > W/2 + 6) { keys.left = true; keys.right = false; }
+      else { keys.left = keys.right = false; }
+    }
+    keys.up = true;
+  }
+
+  // acceleration and braking
+  if(keys.up){
+    player.speed += player.accel;
+  } else if(keys.down){
+    player.speed -= player.decel * 1.6;
+  } else {
+    // natural friction
+    player.speed -= player.decel * 0.6;
+  }
+  // cap speed
+  player.speed = Math.max(0, Math.min(player.speed, player.maxSpeed));
+
+  // steering reduces speed slightly
+  if(keys.left) {
+    player.x -= player.turnSpeed * (1 + player.speed/8);
+    player.angle = Math.max(-14, player.angle - 6);
+  } else if(keys.right) {
+    player.x += player.turnSpeed * (1 + player.speed/8);
+    player.angle = Math.min(14, player.angle + 6);
+  } else {
+    // straighten
+    player.angle *= 0.85;
+  }
+
+  // keep player inside road
+  const leftLimit = roadX + 6;
+  const rightLimit = roadX + roadW - 6 - player.w;
+  if(player.x < leftLimit) player.x = leftLimit;
+  if(player.x > rightLimit) player.x = rightLimit;
+
+  // scoring by time; more points at higher speed
+  score += 0.035 + player.speed*0.03;
+  scoreEl.textContent = Math.floor(score);
+  speedText.textContent = Math.round(player.speed * 10) / 10;
+
+  // check collisions
+  const pbox = { x: player.x, y: player.y, w: player.w, h: player.h };
+  for(const o of obstacles){
+    const obox = { x: o.x, y: o.y, w: o.w, h: o.h };
+    if(checkCollision(pbox, obox)){
+      // small impact sound effect (beep) if supported
+      endGame();
+      return;
+    }
+  }
+
+  // draw
+  // clear
+  ctx.fillStyle = '#111';
+  ctx.fillRect(0,0,W,H);
+
+  drawBackground(bgOffset);
+
+  // draw obstacles
+  for(const o of obstacles) drawObstacle(o);
+
+  // draw player
+  drawPlayer();
+
+  // HUD top overlay (score already updated in DOM)
+  requestAnimationFrame(loop);
+}
+
+/* Initial draw */
+(function initDraw(){
+  ctx.fillStyle = '#111';
+  ctx.fillRect(0,0,W,H);
+  ctx.fillStyle = '#fff';
+  ctx.font = '16px system-ui';
+  ctx.fillText('Nhấn Bắt đầu để chơi', 18, 24);
+})();
+
+/* Expose restart / keyboard hints for accessibility */
+window.startGame = startGame;
+
+/* Prevent touchmove from scrolling on canvas */
+canvas.addEventListener('touchmove', (e)=>{ e.preventDefault(); }, { passive:false });
+
+</script>
+</body>
+</html>
