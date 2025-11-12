@@ -193,15 +193,15 @@ function start(easy=false){
   running = true;
   paused = false;
   if(easy){
-    gravity = 0.38;
+    gravity = 0.4;
     flapStrength = -8;
-    speed = 2.0;
+    speed = 1,4;
     pipeGap = 170;
     pipeSpawnRate = 100;
   } else {
-    gravity = 0.5;
+    gravity = 1,5;
     flapStrength = -9;
-    speed = 2.6;
+    speed = 2;
     pipeGap = 150;
     pipeSpawnRate = 90;
   }
@@ -334,7 +334,7 @@ function loop(){
   bird.y += bird.vy;
   // rotate gradually down
   bird.rot += Math.min(6, (bird.vy + 1.5) * 2);
-  if(bird.rot > 85) bird.rot = 85;
+  if(bird.rot > 100) bird.rot = 85;
 
   // ground collision
   if(bird.y + bird.h > H - 80){
@@ -411,4 +411,4 @@ canvas.addEventListener('touchmove', (e)=>{ e.preventDefault(); }, { passive:fal
 
 </script>
 </body>
-</html>
+</html>  
