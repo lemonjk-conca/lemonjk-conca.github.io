@@ -1,0 +1,653 @@
+<!doctype html>
+<html lang="vi">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>Music Browser - Nghe & Tải nhạc (Local)</title>
+<style>
+  :root{
+    --bg: linear-gradient(180deg,#e6f7ff,#f8fbff);
+    --card: #ffffff;
+    --accent: #3b82f6;
+    --muted: #6b7280;
+    --danger: #ef4444;
+  }
+  html,body{height:100%;margin:0;font-family:Inter,system-ui,-apple-system,Segoe UI,Roboto,"Helvetica Neue",Arial;}
+  body{background:var(--bg);display:flex;align-items:center;justify-content:center;padding:28px;}
+  .app{
+    width:100%;
+    max-width:1000px;
+    background:var(--card);
+    border-radius:12px;
+    box-shadow:0 12px 30px rgba(2,6,23,0.08);
+    overflow:hidden;
+    display:grid;
+    grid-template-columns:360px 1fr;
+    gap:0;
+    min-height:540px;
+  }
+
+  /* Left: Upload / Playlist */
+  .left{
+    padding:18px;
+    border-right:1px solid #eef2f7;
+    background: linear-gradient(180deg,#f8fbff,#f4f8ff);
+  }
+  h2{margin:0 0 8px 0;font-size:18px;color:#0f172a}
+  .upload-area{
+    margin:12px 0;
+    border:2px dashed rgba(59,130,246,0.18);
+    border-radius:10px;
+    padding:14px;
+    text-align:center;
+    background: rgba(59,130,246,0.03);
+    color:var(--muted);
+    cursor:pointer;
+  }
+  .upload-area.dragover{ background: rgba(59,130,246,0.08); box-shadow: inset 0 0 0 3px rgba(59,130,246,0.03); }
+  .upload-area small{ display:block;margin-top:6px;color:var(--muted); }
+
+  .controls-row{ display:flex; gap:8px; margin-top:10px; }
+  .btn{
+    background:var(--accent);
+    color:#fff;
+    border:none;
+    padding:8px 10px;
+    border-radius:8px;
+    font-weight:700;
+    cursor:pointer;
+  }
+  .btn.secondary{ background:#fff; color:var(--accent); border:1px solid rgba(59,130,246,0.12); font-weight:600; }
+  .btn.danger{ background:var(--danger); }
+
+  .playlist{
+    margin-top:14px;
+    max-height:380px;
+    overflow:auto;
+    padding-right:6px;
+  }
+  .track{
+    display:flex;
+    align-items:center;
+    gap:10px;
+    padding:8px;
+    border-radius:8px;
+    cursor:pointer;
+  }
+  .track:hover{ background:rgba(2,6,23,0.03); }
+  .track.active{ background:rgba(59,130,246,0.08); }
+  .thumb{
+    width:46px;height:46px;border-radius:6px;background:linear-gradient(135deg,#eef2ff,#fff);
+    display:flex;align-items:center;justify-content:center;color:var(--muted);font-weight:700;font-size:13px;
+  }
+  .meta{ flex:1; min-width:0; }
+  .title{ font-weight:700; color:#0f172a; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  .meta small{ color:var(--muted); display:block; }
+
+  /* Right: Player */
+  .right{ padding:22px; display:flex; flex-direction:column; gap:12px; }
+  .big{
+    display:flex;
+    gap:18px;
+    align-items:center;
+  }
+  .big .art{
+    width:160px;height:160px;border-radius:14px;background:linear-gradient(135deg,#f3f4f6,#fff);display:flex;align-items:center;justify-content:center;font-weight:800;color:var(--muted);font-size:28px;
+  }
+  .big .info{ flex:1; }
+  .big .info h3{ margin:0;font-size:20px;color:#07133a; }
+  .big .info p{ margin:6px 0 0 0;color:var(--muted);font-size:13px; }
+
+  .player-controls{
+    display:flex;
+    align-items:center;
+    gap:12px;
+    margin-top:6px;
+  }
+  .circle{
+    width:56px;height:56px;border-radius:50%;display:flex;align-items:center;justify-content:center;background:#fff;border:1px solid rgba(2,6,23,0.06);cursor:pointer;
+    box-shadow:0 6px 16px rgba(2,6,23,0.06);
+  }
+  .icon{ font-size:18px; color:var(--accent); font-weight:800; }
+
+  .progress{
+    margin-top:8px;
+  }
+  .progress input[type=range]{ width:100%; accent-color:var(--accent); }
+  .time-row{ display:flex;justify-content:space-between;color:var(--muted);font-size:13px; }
+
+  .bottom-controls{
+    display:flex;gap:12px;align-items:center;margin-top:8px;
+  }
+  .small-btn{ background:#fff;border:1px solid rgba(2,6,23,0.06);padding:8px 10px;border-radius:8px;cursor:pointer; }
+
+  footer.info{ font-size:12px;color:var(--muted); margin-top:auto; text-align:center; padding-top:10px; border-top:1px dashed #f1f5f9; }
+
+  /* responsive */
+  @media (max-width:900px){
+    .app{ grid-template-columns:1fr; min-height:640px; }
+    .left{ order:2;border-right:none;border-top:1px solid #eef2f7; }
+    .right{ order:1; }
+    .big{ flex-direction:column; align-items:flex-start; }
+    .big .art{ width:140px;height:140px; }
+  }
+</style>
+</head>
+<body>
+<div class="app" role="application" aria-label="Music Browser">
+  <div class="left" aria-hidden="false">
+    <h2>Music Browser</h2>
+    <div class="upload-area" id="drop" tabindex="0">
+      Kéo thả file âm thanh vào đây hoặc nhấp để chọn
+      <small>Hỗ trợ nhiều file (mp3, m4a, wav, ogg...). Dữ liệu được lưu cục bộ (IndexedDB).</small>
+      <input id="file" type="file" accept="audio/*" multiple style="display:none" />
+    </div>
+
+    <div class="controls-row">
+      <button class="btn" id="addBtn">Thêm file</button>
+      <button class="btn secondary" id="importBtn">Nhập (JSON)</button>
+      <button class="btn secondary" id="exportBtn">Xuất (JSON)</button>
+      <button class="btn secondary" id="clearAll">Xoá tất cả</button>
+    </div>
+
+    <div class="playlist" id="playlist" aria-live="polite" aria-label="Danh sách nhạc">
+      <!-- track items -->
+    </div>
+  </div>
+
+  <div class="right">
+    <div class="big">
+      <div class="art" id="art">♪</div>
+      <div class="info">
+        <h3 id="nowTitle">Chưa có bài hát</h3>
+        <p id="nowSub">Thêm file và bấm phát</p>
+
+        <div class="player-controls">
+          <button class="small-btn" id="prevBtn">Prev</button>
+          <div class="circle" id="playBtn" title="Play / Pause"><span id="playIcon" class="icon">▶</span></div>
+          <button class="small-btn" id="nextBtn">Next</button>
+
+          <div style="flex:1"></div>
+
+          <label style="display:flex;gap:8px;align-items:center">
+            <input type="checkbox" id="shuffle"/> Shuffle
+          </label>
+          <label style="display:flex;gap:8px;align-items:center">
+            <input type="checkbox" id="loop"/> Loop
+          </label>
+        </div>
+
+        <div class="progress">
+          <input type="range" id="seek" min="0" max="100" value="0" />
+          <div class="time-row"><span id="curTime">0:00</span><span id="durTime">0:00</span></div>
+        </div>
+
+        <div class="bottom-controls">
+          <label style="display:flex;gap:8px;align-items:center">
+            Vol <input id="vol" type="range" min="0" max="1" step="0.01" value="1" />
+          </label>
+          <button class="small-btn" id="downloadBtn">Tải file</button>
+          <button class="small-btn" id="removeBtn">Xoá bài</button>
+        </div>
+      </div>
+    </div>
+
+    <footer class="info">Bài hát được lưu cục bộ trên trình duyệt bằng IndexedDB. Bạn có thể xuất/import playlist (JSON) để chia sẻ.</footer>
+  </div>
+</div>
+
+<script>
+/*
+  Music Browser - Single-file
+  - Upload audio files (drag/drop or file picker)
+  - Persist files in IndexedDB so they remain between sessions
+  - Play, pause, seek, volume, prev/next, shuffle, loop
+  - Export/import playlist metadata + audio blobs as JSON (base64) (optional)
+  - Download single track, delete single track or clear all
+*/
+
+// ---------- IndexedDB helpers ----------
+const DB_NAME = 'music-browser-db';
+const STORE = 'tracks';
+let db = null;
+
+function openDB(){
+  return new Promise((resolve, reject) => {
+    if(db) return resolve(db);
+    const req = indexedDB.open(DB_NAME, 1);
+    req.onupgradeneeded = (e) => {
+      const idb = e.target.result;
+      if(!idb.objectStoreNames.contains(STORE)){
+        idb.createObjectStore(STORE, { keyPath: 'id', autoIncrement: true });
+      }
+    };
+    req.onsuccess = (e) => { db = e.target.result; resolve(db); };
+    req.onerror = (e) => reject(e.target.error);
+  });
+}
+function addTrackToDB(track){
+  return openDB().then(db => new Promise((res, rej) => {
+    const tx = db.transaction(STORE, 'readwrite');
+    const store = tx.objectStore(STORE);
+    const req = store.add(track);
+    req.onsuccess = () => res(req.result);
+    req.onerror = () => rej(req.error);
+  }));
+}
+function getAllTracksFromDB(){
+  return openDB().then(db => new Promise((res, rej) => {
+    const tx = db.transaction(STORE, 'readonly');
+    const store = tx.objectStore(STORE);
+    const req = store.getAll();
+    req.onsuccess = () => res(req.result || []);
+    req.onerror = () => rej(req.error);
+  }));
+}
+function deleteTrackFromDB(id){
+  return openDB().then(db => new Promise((res, rej) => {
+    const tx = db.transaction(STORE, 'readwrite');
+    const store = tx.objectStore(STORE);
+    const req = store.delete(id);
+    req.onsuccess = () => res();
+    req.onerror = () => rej(req.error);
+  }));
+}
+function clearAllDB(){
+  return openDB().then(db => new Promise((res, rej) => {
+    const tx = db.transaction(STORE, 'readwrite');
+    const store = tx.objectStore(STORE);
+    const req = store.clear();
+    req.onsuccess = () => res();
+    req.onerror = () => rej(req.error);
+  }));
+}
+
+// ---------- App state ----------
+const playlistEl = document.getElementById('playlist');
+const fileInput = document.getElementById('file');
+const drop = document.getElementById('drop');
+const addBtn = document.getElementById('addBtn');
+const importBtn = document.getElementById('importBtn');
+const exportBtn = document.getElementById('exportBtn');
+const clearAllBtn = document.getElementById('clearAll');
+
+const nowTitle = document.getElementById('nowTitle');
+const nowSub = document.getElementById('nowSub');
+const art = document.getElementById('art');
+
+const playBtn = document.getElementById('playBtn');
+const playIcon = document.getElementById('playIcon');
+const prevBtn = document.getElementById('prevBtn');
+const nextBtn = document.getElementById('nextBtn');
+const seek = document.getElementById('seek');
+const curTime = document.getElementById('curTime');
+const durTime = document.getElementById('durTime');
+const vol = document.getElementById('vol');
+const shuffleChk = document.getElementById('shuffle');
+const loopChk = document.getElementById('loop');
+const downloadBtn = document.getElementById('downloadBtn');
+const removeBtn = document.getElementById('removeBtn');
+
+let audio = new Audio();
+audio.preload = 'metadata';
+audio.crossOrigin = 'anonymous';
+
+let tracks = []; // { id, name, size, type, duration, blob }
+let currentIndex = -1;
+let isPlaying = false;
+
+// ---------- UI helpers ----------
+function formatTime(s){
+  if(!isFinite(s) || isNaN(s)) return '0:00';
+  const m = Math.floor(s/60);
+  const sec = Math.floor(s%60).toString().padStart(2,'0');
+  return `${m}:${sec}`;
+}
+
+function renderPlaylist(){
+  playlistEl.innerHTML = '';
+  tracks.forEach((t, i) => {
+    const div = document.createElement('div');
+    div.className = 'track' + (i === currentIndex ? ' active' : '');
+    div.tabIndex = 0;
+    const thumb = document.createElement('div');
+    thumb.className = 'thumb';
+    thumb.textContent = t.name.split('.').slice(0,1)[0].slice(0,2).toUpperCase();
+    const meta = document.createElement('div');
+    meta.className = 'meta';
+    const title = document.createElement('div');
+    title.className = 'title';
+    title.textContent = t.name;
+    const small = document.createElement('small');
+    small.textContent = `${formatTime(t.duration || 0)} • ${(t.size/1024/1024).toFixed(2)} MB`;
+    meta.appendChild(title);
+    meta.appendChild(small);
+    div.appendChild(thumb);
+    div.appendChild(meta);
+    div.addEventListener('click', ()=> playIndex(i));
+    playlistEl.appendChild(div);
+  });
+}
+
+// ---------- Playback ----------
+function setCurrentTrackByIndex(i){
+  if(i < 0 || i >= tracks.length){ return; }
+  currentIndex = i;
+  const t = tracks[i];
+  const url = URL.createObjectURL(t.blob);
+  audio.src = url;
+  audio.load();
+  nowTitle.textContent = t.name;
+  nowSub.textContent = `${(t.size/1024/1024).toFixed(2)} MB`;
+  art.textContent = t.name.slice(0,2).toUpperCase();
+  renderPlaylist();
+  // enable download button
+  downloadBtn.disabled = false;
+  removeBtn.disabled = false;
+}
+
+function playIndex(i){
+  if(i === undefined) return;
+  setCurrentTrackByIndex(i);
+  audio.play().then(() => {
+    isPlaying = true;
+    playIcon.textContent = '⏸';
+  }).catch(()=> { /* autoplay blocked maybe */ isPlaying=false; playIcon.textContent='▶'; });
+}
+
+function playNext(){
+  if(shuffleChk.checked){
+    const r = Math.floor(Math.random()*tracks.length);
+    playIndex(r);
+    return;
+  }
+  let ni = currentIndex + 1;
+  if(ni >= tracks.length){
+    if(loopChk.checked) ni = 0; else { audio.pause(); isPlaying=false; playIcon.textContent='▶'; return; }
+  }
+  playIndex(ni);
+}
+
+function playPrev(){
+  let ni = currentIndex - 1;
+  if(ni < 0) ni = tracks.length - 1;
+  playIndex(ni);
+}
+
+// ---------- Events ----------
+audio.addEventListener('loadedmetadata', ()=>{
+  const t = tracks[currentIndex];
+  if(t){
+    t.duration = audio.duration;
+    durTime.textContent = formatTime(audio.duration);
+    renderPlaylist();
+  }
+});
+
+audio.addEventListener('timeupdate', ()=>{
+  curTime.textContent = formatTime(audio.currentTime);
+  if(audio.duration && !isNaN(audio.duration)){
+    const v = (audio.currentTime / audio.duration) * 100;
+    seek.value = String(v);
+  }
+});
+
+audio.addEventListener('ended', ()=>{
+  playNext();
+});
+
+playBtn.addEventListener('click', ()=>{
+  if(!audio.src){
+    if(tracks.length>0) playIndex(0);
+    return;
+  }
+  if(audio.paused){
+    audio.play().then(()=> { isPlaying=true; playIcon.textContent='⏸'; }).catch(()=>{});
+  } else {
+    audio.pause(); isPlaying=false; playIcon.textContent='▶';
+  }
+});
+
+prevBtn.addEventListener('click', ()=> playPrev());
+nextBtn.addEventListener('click', ()=> playNext());
+
+seek.addEventListener('input', (e)=>{
+  if(audio.duration && !isNaN(audio.duration)){
+    const pct = Number(e.target.value);
+    audio.currentTime = audio.duration * (pct/100);
+  }
+});
+vol.addEventListener('input', (e)=> { audio.volume = Number(e.target.value); });
+
+// Download current track
+downloadBtn.addEventListener('click', ()=>{
+  if(currentIndex < 0) return;
+  const t = tracks[currentIndex];
+  const url = URL.createObjectURL(t.blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = t.name;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  URL.revokeObjectURL(url);
+});
+
+// Remove current track
+removeBtn.addEventListener('click', async ()=>{
+  if(currentIndex < 0) return;
+  const id = tracks[currentIndex].id;
+  await deleteTrackFromDB(id);
+  await loadAllTracksFromDB();
+  if(tracks.length>0) {
+    const ni = Math.min(currentIndex, tracks.length-1);
+    playIndex(ni);
+  } else {
+    audio.pause();
+    audio.src = '';
+    currentIndex = -1;
+    nowTitle.textContent = 'Chưa có bài hát';
+    nowSub.textContent = 'Thêm file và bấm phát';
+    renderPlaylist();
+  }
+});
+
+// ---------- File handling ----------
+async function handleFiles(fileList){
+  const arr = Array.from(fileList);
+  for(const f of arr){
+    // only audio files
+    if(!f.type.startsWith('audio')) continue;
+    // read as blob (we can store File directly)
+    const track = {
+      name: f.name,
+      size: f.size,
+      type: f.type,
+      blob: f.slice(0, f.size, f.type),
+      duration: 0
+    };
+    // To get duration, create a temporary audio
+    await addTrackToDB(track).then(()=>{}).catch(console.error);
+  }
+  await loadAllTracksFromDB();
+}
+
+// Drag & drop
+drop.addEventListener('click', ()=> fileInput.click());
+drop.addEventListener('dragenter', (e)=> { e.preventDefault(); drop.classList.add('dragover'); });
+drop.addEventListener('dragover', (e)=> { e.preventDefault(); });
+drop.addEventListener('dragleave', (e)=> { e.preventDefault(); drop.classList.remove('dragover'); });
+drop.addEventListener('drop', (e)=> {
+  e.preventDefault();
+  drop.classList.remove('dragover');
+  const files = e.dataTransfer.files;
+  handleFiles(files);
+});
+
+// File input
+fileInput.addEventListener('change', (e)=> {
+  if(e.target.files.length) handleFiles(e.target.files);
+});
+addBtn.addEventListener('click', ()=> fileInput.click());
+
+// ---------- DB load and map blobs ----------
+async function loadAllTracksFromDB(){
+  const raw = await getAllTracksFromDB();
+  // raw items contain blob (as Blob) already
+  tracks = raw.map(r => ({
+    id: r.id,
+    name: r.name,
+    size: r.size,
+    type: r.type,
+    blob: r.blob,    // stored as Blob
+    duration: r.duration || 0
+  }));
+  // If any track has duration==0, attempt to read metadata to set duration
+  for(let i=0;i<tracks.length;i++){
+    if(!tracks[i].duration || tracks[i].duration === 0){
+      tracks[i].duration = await readDurationFromBlob(tracks[i].blob).catch(()=>0);
+      // update DB with duration
+      updateDurationInDB(tracks[i].id, tracks[i].duration).catch(()=>{});
+    }
+  }
+  renderPlaylist();
+  // if no current track, set first
+  if(tracks.length>0 && currentIndex === -1){
+    setCurrentTrackByIndex(0);
+  }
+}
+function updateDurationInDB(id, dur){
+  return openDB().then(db => new Promise((res, rej)=>{
+    const tx = db.transaction(STORE, 'readwrite');
+    const store = tx.objectStore(STORE);
+    const getReq = store.get(id);
+    getReq.onsuccess = ()=>{
+      const obj = getReq.result;
+      if(!obj) { res(); return; }
+      obj.duration = dur;
+      const putReq = store.put(obj);
+      putReq.onsuccess = ()=> res();
+      putReq.onerror = ()=> rej(putReq.error);
+    };
+    getReq.onerror = ()=> rej(getReq.error);
+  }));
+}
+function readDurationFromBlob(blob){
+  return new Promise((res, rej)=>{
+    const tmp = document.createElement('audio');
+    tmp.preload = 'metadata';
+    tmp.src = URL.createObjectURL(blob);
+    tmp.addEventListener('loadedmetadata', ()=>{
+      const d = tmp.duration;
+      URL.revokeObjectURL(tmp.src);
+      res(d);
+    });
+    tmp.addEventListener('error', ()=> { URL.revokeObjectURL(tmp.src); rej(new Error('Cannot read duration')); });
+  });
+}
+
+// When adding tracks to DB we stored blob, but we didn't compute duration earlier. Let's intercept add to store proper object.
+const origAddTrackToDB = addTrackToDB;
+addTrackToDB = function(track){
+  // ensure blob present and then store as an object with blob property
+  return new Promise(async (res, rej) => {
+    try{
+      // get duration
+      const dur = await readDurationFromBlob(track.blob).catch(()=>0);
+      const obj = { name: track.name, size: track.size, type: track.type, blob: track.blob, duration: dur };
+      const id = await origAddTrackToDB(obj);
+      res(id);
+    }catch(err){ rej(err); }
+  });
+};
+
+// ---------- Export / Import (JSON with base64) ----------
+function blobToBase64(blob){
+  return new Promise((res)=> {
+    const reader = new FileReader();
+    reader.onload = () => res(reader.result.split(',')[1]); // base64 part
+    reader.readAsDataURL(blob);
+  });
+}
+async function exportAllAsJSON(){
+  const arr = [];
+  for(const t of tracks){
+    const b64 = await blobToBase64(t.blob);
+    arr.push({ name: t.name, size: t.size, type: t.type, duration: t.duration, data: b64 });
+  }
+  const json = JSON.stringify({ exportedAt: Date.now(), tracks: arr });
+  const blob = new Blob([json], { type: 'application/json' });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = 'music-playlist.json';
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  URL.revokeObjectURL(a.href);
+}
+async function importFromJSON(){
+  const inp = document.createElement('input');
+  inp.type = 'file';
+  inp.accept = 'application/json';
+  inp.addEventListener('change', async (e)=>{
+    const f = e.target.files[0];
+    if(!f) return;
+    const txt = await f.text();
+    try{
+      const obj = JSON.parse(txt);
+      if(!obj.tracks || !Array.isArray(obj.tracks)) throw new Error('Invalid file');
+      for(const t of obj.tracks){
+        const bin = atob(t.data);
+        const len = bin.length;
+        const u8 = new Uint8Array(len);
+        for(let i=0;i<len;i++) u8[i] = bin.charCodeAt(i);
+        const blob = new Blob([u8], { type: t.type || 'audio/mpeg' });
+        await addTrackToDB({ name: t.name, size: t.size || blob.size, type: t.type || blob.type, blob });
+      }
+      await loadAllTracksFromDB();
+      alert('Import xong');
+    }catch(err){
+      alert('Không thể import: ' + err.message);
+    }
+  });
+  inp.click();
+}
+
+exportBtn.addEventListener('click', ()=> exportAllAsJSON());
+importBtn.addEventListener('click', ()=> importFromJSON());
+clearAllBtn.addEventListener('click', async ()=>{
+  if(!confirm('Xoá tất cả bài hát?')) return;
+  await clearAllDB();
+  tracks = [];
+  currentIndex = -1;
+  audio.pause();
+  audio.src = '';
+  renderPlaylist();
+});
+
+// ---------- Init ----------
+async function startup(){
+  await openDB();
+  await loadAllTracksFromDB();
+  // wire up initial UI state
+  vol.value = String(audio.volume);
+  downloadBtn.disabled = true;
+  removeBtn.disabled = true;
+}
+startup();
+
+// ---------- Utility: allow clicking playlist items with keyboard (Enter) ----------
+playlistEl.addEventListener('keydown', (e)=>{
+  if(e.key === 'Enter' && document.activeElement && document.activeElement.classList.contains('track')){
+    const nodes = Array.from(playlistEl.children);
+    const idx = nodes.indexOf(document.activeElement);
+    if(idx >= 0) playIndex(idx);
+  }
+});
+
+// Prevent accidental navigation when dragging file over page
+window.addEventListener('dragover', (e)=> e.preventDefault());
+window.addEventListener('drop', (e)=> e.preventDefault());
+</script>
+</body>
+</html>
