@@ -1,0 +1,997 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Ultimate 8-Ball Pool - Multiplayer & Smart AI</title>
+    <style>
+        body {
+            margin: 0;
+            overflow: hidden;
+            background: linear-gradient(135deg, #1a1a2e, #16213e);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-family: 'Arial', sans-serif;
+            color: white;
+        }
+        canvas {
+            background: #228B22;
+            border: 20px solid #8B4513;
+            border-radius: 10px;
+            box-shadow: 0 0 30px rgba(139,69,19,0.8);
+            cursor: crosshair;
+        }
+        #ui {
+            position: absolute;
+            top: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            text-align: center;
+            z-index: 10;
+        }
+        #turnIndicator {
+            font-size: 32px;
+            font-weight: bold;
+            text-shadow: 3px 3px 6px black;
+            margin-bottom: 10px;
+        }
+        #scores {
+            font-size: 24px;
+            color: #FFD700;
+            text-shadow: 2px 2px 4px black;
+        }
+        #controls {
+            margin-top: 20px;
+        }
+        button {
+            background: #D2B48C;
+            border: none;
+            padding: 12px 24px;
+            margin: 0 5px; 
+            font-size: 18px;
+            font-weight: bold;
+            border-radius: 8px;
+            cursor: pointer;
+            box-shadow: 0 4px 8px rgba(0,0,0,0.3);
+            transition: all 0.2s;
+        }
+        button:hover {
+            background: #DEB887;
+            transform: translateY(-2px);
+        }
+        #instructions {
+            position: absolute;
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            color: #DDD;
+            font-size: 16px;
+            text-align: center;
+            text-shadow: 1px 1px 2px black;
+            max-width: 700px;
+        }
+        #playerBalls, #aiBalls {
+            position: absolute;
+            top: 100px;
+            font-size: 14px;
+            text-shadow: 1px 1px 2px black;
+        }
+        #playerBalls { left: 20px; }
+        #aiBalls { right: 20px; }
+    </style>
+</head>
+<body>
+    <canvas id="canvas"></canvas>
+    <div id="ui">
+        <div id="turnIndicator">Chào mừng! Chọn chế độ</div>
+        <div id="scores">P1: 0 | P2/AI: 0</div>
+        <div id="controls">
+            <button id="btn1p">1 Người (vs AI)</button>
+            <div id="aiDifficultyControls" style="display: none; margin-top: 10px;">
+                <button id="btnAiEasy">Dễ</button>
+                <button id="btnAiMedium">Vừa</button>
+                <button id="btnAiHard">Khó</button>
+            </div>
+            <button id="btn2p">2 Người chơi</button>
+            <button id="restartBtn">Chơi lại</button>
+        </div>
+    </div>
+    <div id="playerBalls">Bi của bạn: TBD</div>
+    <div id="aiBalls">Bi đối thủ: TBD</div>
+    <div id="instructions">Nhắm: Chuột | Bắn: Giữ Chuột Trái (Thanh Lực) | Lỗi: Nhấp chuột để đặt bi chủ (Bi trong tay) | R: Chơi lại | Luật 8-Ball Chuẩn áp dụng! 🎱</div>
+    <script>
+        const canvas = document.getElementById('canvas');
+        const ctx = canvas.getContext('2d');
+        canvas.width = 1000;
+        canvas.height = 500;
+
+        const turnIndicator = document.getElementById('turnIndicator');
+        const scoresDiv = document.getElementById('scores');
+        const playerBallsDiv = document.getElementById('playerBalls');
+        const aiBallsDiv = document.getElementById('aiBalls');
+        const btn1p = document.getElementById('btn1p');
+        const btn2p = document.getElementById('btn2p');
+        const restartBtn = document.getElementById('restartBtn');
+        const aiDifficultyControls = document.getElementById('aiDifficultyControls');
+        const btnAiEasy = document.getElementById('btnAiEasy');
+        const btnAiMedium = document.getElementById('btnAiMedium');
+        const btnAiHard = document.getElementById('btnAiHard');
+
+        // Audio
+        let audioCtx;
+        let lastSoundTime = 0;
+        function initAudio() {
+            audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+        }
+        function playSound(freq, duration) {
+            const osc = audioCtx.createOscillator();
+            osc.type = 'sine';
+            osc.frequency.value = freq;
+            const gain = audioCtx.createGain();
+            gain.gain.setValueAtTime(0.3, audioCtx.currentTime);
+            gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + duration);
+            osc.connect(gain);
+            gain.connect(audioCtx.destination);
+            osc.start();
+            osc.stop(audioCtx.currentTime + duration);
+        }
+        function playCollision() {
+            if (Date.now() - lastSoundTime > 80) {
+                playSound(200 + Math.random() * 100, 0.08);
+                lastSoundTime = Date.now();
+            }
+        }
+        function playPot() {
+            playSound(440 + Math.random() * 200, 0.15);
+        }
+        function playShoot() {
+            playSound(100, 0.1);
+        }
+
+        // Particle class (Giữ nguyên)
+        class Particle {
+            constructor(x, y) {
+                this.x = x;
+                this.y = y;
+                this.vx = (Math.random() - 0.5) * 12;
+                this.vy = (Math.random() - 0.5) * 12;
+                this.life = 1;
+                this.decay = 0.03;
+                this.color = `hsl(${Math.random()*60 + 50}, 100%, 60%)`;
+            }
+            update() {
+                this.x += this.vx;
+                this.vy += 0.2; 
+                this.vx *= 0.98;
+                this.vy *= 0.98;
+                this.life -= this.decay;
+            }
+            draw() {
+                ctx.save();
+                ctx.globalAlpha = this.life;
+                ctx.fillStyle = this.color;
+                ctx.shadowColor = this.color;
+                ctx.shadowBlur = 10;
+                ctx.beginPath();
+                ctx.arc(this.x, this.y, 4 * this.life, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.restore();
+            }
+        }
+        let particles = [];
+
+        // Ball class (Giữ nguyên)
+        class Ball {
+            constructor(x, y, radius, color, number, isStriped = false, group = null) {
+                this.x = x;
+                this.y = y;
+                this.radius = radius;
+                this.color = color;
+                this.number = number;
+                this.isStriped = isStriped;
+                this.group = group;
+                this.vx = 0;
+                this.vy = 0;
+                this.potted = false;
+            }
+
+            draw() {
+                ctx.save();
+                ctx.shadowColor = 'rgba(0,0,0,0.5)';
+                ctx.shadowBlur = 10;
+                ctx.shadowOffsetX = 4;
+                ctx.shadowOffsetY = 4;
+
+                const grad = ctx.createRadialGradient(
+                    this.x - this.radius / 3, this.y - this.radius / 3, 0,
+                    this.x, this.y, this.radius
+                );
+                grad.addColorStop(0, 'rgba(255,255,255,0.8)');
+                grad.addColorStop(0.7, this.color);
+                grad.addColorStop(1, this.color);
+
+                ctx.beginPath();
+                ctx.arc(this.x, this.y, this.radius, 0, Math.PI * 2);
+                if (this.isStriped) {
+                    ctx.fillStyle = '#FFF';
+                    ctx.fill();
+                    ctx.beginPath();
+                    ctx.arc(this.x, this.y, this.radius * 0.75, Math.PI / 4, 5 * Math.PI / 4);
+                    ctx.lineTo(this.x, this.y);
+                    ctx.fillStyle = this.color;
+                    ctx.fill();
+                    ctx.beginPath();
+                    ctx.arc(this.x, this.y, this.radius / 2.2, 0, Math.PI * 2);
+                    ctx.fillStyle = '#FFF';
+                    ctx.fill();
+                } else {
+                    ctx.fillStyle = grad;
+                    ctx.fill();
+                }
+                ctx.closePath();
+
+                ctx.strokeStyle = 'rgba(255,255,255,0.6)';
+                ctx.lineWidth = 2;
+                ctx.beginPath();
+                ctx.arc(this.x - this.radius / 3, this.y - this.radius / 3, this.radius / 3, 0, Math.PI);
+                ctx.stroke();
+
+                if (this.number) {
+                    ctx.fillStyle = this.isStriped ? '#000' : '#FFF';
+                    ctx.font = `bold ${this.radius * 0.9}px Arial`;
+                    ctx.textAlign = 'center';
+                    ctx.textBaseline = 'middle';
+                    ctx.shadowColor = 'transparent';
+                    ctx.shadowBlur = 0;
+                    ctx.fillText(this.number.toString(), this.x, this.y);
+                }
+
+                ctx.restore();
+            }
+
+            updatePosition(friction = 0.985) {
+                this.x += this.vx;
+                this.y += this.vy;
+                this.vx *= friction;
+                this.vy *= friction;
+            }
+
+            clampWalls() {
+                const border = 25;
+                if (this.x - this.radius < border) {
+                    this.x = border + this.radius;
+                    this.vx = -this.vx * 0.85;
+                } else if (this.x + this.radius > canvas.width - border) {
+                    this.x = canvas.width - border - this.radius;
+                    this.vx = -this.vx * 0.85;
+                }
+                if (this.y - this.radius < border) {
+                    this.y = border + this.radius;
+                    this.vy = -this.vy * 0.85;
+                } else if (this.y + this.radius > canvas.height - border) {
+                    this.y = canvas.height - border - this.radius;
+                    this.vy = -this.vy * 0.85;
+                }
+            }
+        }
+
+        let balls = [];
+        let radius = 18;
+        let gameMode = 'menu';
+        let p1Wins = 0;
+        let p2Wins = 0;
+        let currentPlayer = 1;
+        let playerGroup = null;
+        let opponentGroup = null;
+        let groupsAssigned = false;
+        let allStopped = true;
+        let framesSinceStopped = 0;
+        let aiThinkingTime = 90;
+        let aiCurrentTime = 0;
+        let pottedThisTurn = [];
+        let firstContact = null;
+        let foul = false;
+        let gameOver = false;
+        let winner = null;
+        let shooting = false;
+        let power = 0;
+        let maxPower = 70;
+        let angle = 0;
+        let cueX = 0;
+        let cueY = 0;
+        
+        // BIẾN MỚI
+        let ballInHand = false; 
+        let aiDifficulty = 'medium';
+        let shotTaken = false; 
+
+        const pockets = [
+            {x: 25, y: 25}, {x: canvas.width / 2, y: 15}, {x: canvas.width - 25, y: 25},
+            {x: 25, y: canvas.height - 25}, {x: canvas.width / 2, y: canvas.height - 15}, {x: canvas.width - 25, y: canvas.height - 25}
+        ];
+        const pocketRadius = 28;
+
+        // Xếp bi chuẩn 8-ball
+        function initBalls() {
+            balls = [];
+            const cueBall = new Ball(250, canvas.height / 2, radius, '#FFFFFF', 0, false, 'cue');
+            balls.push(cueBall);
+
+            const solidColors = ['#FFD700', '#4169E1', '#DC143C', '#9370DB', '#FF8C00', '#228B22', '#8B4513'];
+            const stripeColors = ['#FFD700', '#4169E1', '#DC143C', '#9370DB', '#FF8C00', '#228B22', '#8B4513'];
+            
+            const rackOrder = [1, 9, 2, 10, 8, 3, 11, 4, 12, 5, 13, 6, 14, 7, 15]; 
+            const groups = ['solid','stripe','solid','stripe','black','solid','stripe','solid','stripe','solid','stripe','solid','stripe','solid','stripe'];
+            
+            const apexX = canvas.width - 275; 
+            const apexY = canvas.height / 2; 
+            const dX = radius * 2 * 0.866; 
+            const dY = radius; 
+
+            let idx = 0;
+            for (let row = 0; row < 5; row++) {
+                for (let col = 0; col <= row; col++) {
+                    const num = rackOrder[idx];
+                    const grp = groups[idx];
+                    const isStriped = grp === 'stripe';
+                    const colrIdx = (num - 1) % 7;
+                    const color = grp === 'black' ? '#000000' : (isStriped ? stripeColors[colrIdx] : solidColors[colrIdx]);
+
+                    const x = apexX + row * dX;
+                    const y = apexY + (col * 2 * dY) - (row * dY); 
+
+                    balls.push(new Ball(x, y, radius, color, num, isStriped, grp));
+                    idx++;
+                }
+            }
+        }
+
+        // isPathClear 
+        function isPathClear(sx, sy, ex, ey, targetBall) {
+            const steps = 25;
+            for (let k = 0; k <= steps; k++) {
+                const px = sx + (ex - sx) * k / steps;
+                const py = sy + (ey - sy) * k / steps;
+                for (let ball of balls) {
+                    if (ball.potted || ball === balls[0] || ball === targetBall) continue; 
+                    
+                    if (Math.hypot(px - ball.x, py - ball.y) < radius * 2.2) {
+                        return false;
+                    }
+                }
+            }
+            return true;
+        }
+
+        // Kiểm tra đường đi bi chủ an toàn (cho AI)
+        function isCuePathSafe(startX, startY, vx, vy) {
+            let simX = startX;
+            let simY = startY;
+            let simVx = vx;
+            let simVy = vy;
+            const friction = 0.985;
+            const border = 25 + radius;
+
+            for (let i = 0; i < 300; i++) {
+                simX += simVx;
+                simY += simVy;
+                simVx *= friction;
+                simVy *= friction;
+
+                // 1. Kiểm tra va chạm lỗ
+                for (let pocket of pockets) {
+                    if (Math.hypot(simX - pocket.x, simY - pocket.y) < pocketRadius) {
+                        return false; 
+                    }
+                }
+
+                // 2. Kiểm tra va chạm tường 
+                if (simX < border) {
+                    simX = border;
+                    simVx = -simVx * 0.85;
+                } else if (simX > canvas.width - border) {
+                    simX = canvas.width - border;
+                    simVx = -simVx * 0.85;
+                }
+                if (simY < border) {
+                    simY = border;
+                    simVy = -simVy * 0.85;
+                } else if (simY > canvas.height - border) {
+                    simY = canvas.height - border;
+                    simVy = -simVy * 0.85;
+                }
+
+                // 3. Nếu bi dừng
+                if (Math.abs(simVx) < 0.08 && Math.abs(simVy) < 0.08) {
+                    return true;
+                }
+            }
+            return true;
+        }
+
+
+        // UI updates 
+        function updateBallDisplays() {
+            if (!playerGroup || !opponentGroup) {
+                playerBallsDiv.textContent = 'Bi của bạn: TBD';
+                aiBallsDiv.textContent = 'Bi đối thủ: TBD';
+                return;
+            }
+            const playerList = balls.filter(b => b.group === playerGroup && !b.potted && b.number).map(b => b.number).sort((a,b)=>a-b).join(', ');
+            const opponentList = balls.filter(b => b.group === opponentGroup && !b.potted && b.number).map(b => b.number).sort((a,b)=>a-b).join(', ');
+            playerBallsDiv.textContent = `Bi của bạn (${playerGroup.toUpperCase()}s): ${playerList || 'Không'}`;
+            aiBallsDiv.textContent = `Bi đối thủ (${opponentGroup.toUpperCase()}s): ${opponentList || 'Không'}`;
+        }
+        function updateScores() {
+            scoresDiv.textContent = `P1: ${p1Wins} | P2/AI: ${p2Wins}`;
+        }
+        
+        // updateTurnIndicator 
+        function updateTurnIndicator() {
+            const isPlayer1Turn = currentPlayer === 1;
+            const name = gameMode === '1p' ? (isPlayer1Turn ? 'Lượt của bạn' : 'AI đang nghĩ') : `Lượt Người chơi ${currentPlayer}`;
+            let status = '';
+
+            if (ballInHand) {
+                status = ' - BI TRONG TAY (PLACE CUE)';
+            } else if (groupsAssigned) {
+                status = ` - ${ (isPlayer1Turn ? playerGroup : opponentGroup).toUpperCase() }s`;
+            } else {
+                status = ' - BẮN KHAI CUỘC!';
+            }
+
+            turnIndicator.textContent = gameOver ? (winner === 1 ? '🏆 BẠN THẮNG! 🏆' : '😢 BẠN THUA! 😢') : `${name}${status}`;
+        }
+
+        // Cập nhật màu nút độ khó
+        function updateDifficultyButtons() {
+            btnAiEasy.style.background = aiDifficulty === 'easy' ? '#DEB887' : '#D2B48C';
+            btnAiMedium.style.background = aiDifficulty === 'medium' ? '#DEB887' : '#D2B48C';
+            btnAiHard.style.background = aiDifficulty === 'hard' ? '#DEB887' : '#D2B48C';
+        }
+
+        // checkTurnContinue 
+        function checkTurnContinue() {
+            const ownGroup = currentPlayer === 1 ? playerGroup : opponentGroup;
+            let continueTurn = false;
+            
+            // 1. Kiểm tra bi đã vào lỗ
+            for (let ball of pottedThisTurn) {
+                if (ball.group === ownGroup) {
+                    continueTurn = true;
+                } else if (ball.group === 'black') {
+                    const ownLeft = balls.filter(b => b.group === ownGroup && !b.potted && b.number).length;
+                    
+                    if (ownLeft === 0) {
+                        // Thắng hợp lệ (Bi nhóm đã hết)
+                        gameOver = true;
+                        winner = currentPlayer;
+                    } else {
+                        // LỖI NẶNG: Đánh bi 8 vào lỗ sớm -> THUA CUỘC
+                        foul = true; 
+                        gameOver = true;
+                        winner = 3 - currentPlayer; // Đối thủ thắng
+                    }
+                } else {
+                    foul = true; // Bi của đối thủ vào lỗ -> Lỗi
+                }
+            }
+
+            // 2. Kiểm tra First Contact (Bi chạm đầu tiên)
+            if (groupsAssigned && !foul) {
+                if (!firstContact) {
+                    // Không chạm bi nào -> Lỗi
+                    foul = true;
+                } else {
+                    const ownLeft = balls.filter(b => b.group === ownGroup && !b.potted && b.number).length;
+
+                    if (ownLeft > 0) {
+                        // Nếu còn bi nhóm, phải chạm bi nhóm mình đầu tiên
+                        if (firstContact.group !== ownGroup) {
+                            foul = true;
+                        }
+                    } else {
+                        // Nếu đã hết bi nhóm, phải chạm bi 8 đầu tiên
+                        if (firstContact.group !== 'black') {
+                            foul = true;
+                        }
+                    }
+                }
+            }
+            
+            return continueTurn && !foul;
+        }
+
+        // Smart AI 
+        function aiShoot() {
+            const cue = balls[0];
+            let bestScore = -Infinity;
+            let bestAngle = 0;
+            let bestPower = 30;
+
+            let targets = balls.filter(b => !b.potted && b.group === opponentGroup && b.number);
+            if (targets.length === 0) {
+                const blackBall = balls.find(b => b.group === 'black' && !b.potted);
+                if (blackBall) targets = [blackBall];
+            }
+            if (targets.length === 0) {
+                bestAngle = angle; 
+                bestPower = 25;
+            } else {
+                
+                let randomFactor = 0.2;
+                if (aiDifficulty === 'medium') randomFactor = 0.1;
+                if (aiDifficulty === 'hard') randomFactor = 0.05; 
+
+                for (let target of targets) {
+                    for (let pocket of pockets) {
+                        const tx = pocket.x - target.x;
+                        const ty = pocket.y - target.y;
+                        const tdist = Math.hypot(tx, ty);
+                        const dirX = tx / tdist;
+                        const dirY = ty / tdist;
+                        const hitX = target.x - dirX * (radius * 1.8);
+                        const hitY = target.y - dirY * (radius * 1.8);
+                        const cx = hitX - cue.x;
+                        const cy = hitY - cue.y;
+                        const cdist = Math.hypot(cx, cy);
+                        if (cdist < 35) continue;
+                        
+                        if (!isPathClear(cue.x, cue.y, hitX, hitY, target)) continue; 
+
+                        const cAngle = Math.atan2(cy, cx);
+                        let currentPower = Math.max(20, Math.min(60, (cdist + tdist) / 3.5));
+                        let score = 2000 / (cdist + tdist * 0.5) + (1 - Math.random() * randomFactor);
+                        
+                        // --- DỰ ĐOÁN ĐƯỜNG ĐI BI CHỦ ---
+                        const impactVx = Math.cos(cAngle) * (currentPower / 2.5);
+                        const impactVy = Math.sin(cAngle) * (currentPower / 2.5);
+                        const collAngle = Math.atan2(target.y - hitY, target.x - hitX);
+                        const sin = Math.sin(collAngle);
+                        const cos = Math.cos(collAngle);
+                        const avy_rot = impactVy * cos - impactVx * sin; 
+                        const cueNewVx = -avy_rot * sin;
+                        const cueNewVy = avy_rot * cos;
+
+                        if (!isCuePathSafe(hitX, hitY, cueNewVx, cueNewVy)) {
+                            score -= 10000; 
+                        }
+                        // --- KẾT THÚC DỰ ĐOÁN ---
+
+                        if (score > bestScore) {
+                            bestScore = score;
+                            bestAngle = cAngle;
+                            bestPower = currentPower;
+                        }
+                    }
+                }
+            }
+
+            // --- ÁP DỤNG ĐỘ KHÓ ---
+            let finalAngle = bestAngle;
+            let finalPower = bestPower;
+
+            if (aiDifficulty === 'easy') {
+                const angleError = (Math.random() - 0.5) * 0.1; 
+                const powerError = (Math.random() - 0.5) * 15; 
+                finalAngle += angleError;
+                finalPower = Math.max(10, finalPower + powerError);
+            } 
+            else if (aiDifficulty === 'medium') {
+                const angleError = (Math.random() - 0.5) * 0.03; 
+                const powerError = (Math.random() - 0.5) * 5; 
+                finalAngle += angleError;
+                finalPower = Math.max(15, finalPower + powerError);
+            }
+
+            cue.vx = Math.cos(finalAngle) * (finalPower / 2.5);
+            cue.vy = Math.sin(finalAngle) * (finalPower / 2.5);
+            playShoot();
+            firstContact = null;
+            pottedThisTurn = [];
+            foul = false;
+            shotTaken = true; 
+        }
+
+        // restart 
+        function restart() {
+            initBalls();
+            gameOver = false;
+            winner = null;
+            groupsAssigned = false;
+            playerGroup = null;
+            opponentGroup = null;
+            currentPlayer = 1;
+            pottedThisTurn = [];
+            firstContact = null;
+            foul = false;
+            ballInHand = false; 
+            framesSinceStopped = 0;
+            particles = [];
+            power = 0;
+            shooting = false;
+            allStopped = true;
+            shotTaken = false; 
+            updateTurnIndicator();
+            updateBallDisplays();
+            updateDifficultyButtons(); 
+        }
+
+        // setMode 
+        function setMode(mode) {
+            gameMode = mode;
+            restart();
+            
+            if (mode === '1p') {
+                btn1p.style.background = '#DEB887';
+                btn2p.style.background = '#D2B48C';
+                aiDifficultyControls.style.display = 'block'; 
+                updateDifficultyButtons(); 
+            } else if (mode === '2p') {
+                btn1p.style.background = '#D2B48C';
+                btn2p.style.background = '#DEB887';
+                aiDifficultyControls.style.display = 'none'; 
+            } else {
+                btn1p.style.background = '#D2B48C';
+                btn2p.style.background = '#D2B48C';
+                aiDifficultyControls.style.display = 'none';
+            }
+        }
+
+        // Event listeners
+        btn1p.onclick = () => setMode('1p');
+        btn2p.onclick = () => setMode('2p');
+        restartBtn.onclick = restart;
+        
+        btnAiEasy.onclick = () => { 
+            aiDifficulty = 'easy'; 
+            updateDifficultyButtons(); 
+        };
+        btnAiMedium.onclick = () => { 
+            aiDifficulty = 'medium'; 
+            updateDifficultyButtons(); 
+        };
+        btnAiHard.onclick = () => { 
+            aiDifficulty = 'hard'; 
+            updateDifficultyButtons(); 
+        };
+
+        // mousemove (Thêm Ball-in-Hand)
+        canvas.addEventListener('mousemove', (e) => {
+            if (gameMode === 'menu' || !allStopped || gameOver) return;
+            if (gameMode === '1p' && currentPlayer === 2) return; 
+
+            const rect = canvas.getBoundingClientRect();
+            const mx = e.clientX - rect.left;
+            const my = e.clientY - rect.top;
+
+            if (ballInHand) {
+                // Ball-in-Hand: Di chuyển bi chủ theo chuột, giới hạn trong bàn
+                const border = 25 + radius;
+                balls[0].x = Math.max(border, Math.min(canvas.width - border, mx));
+                balls[0].y = Math.max(border, Math.min(canvas.height - border, my));
+                balls[0].potted = false; 
+
+            } else {
+                // Nhắm bắn bình thường
+                angle = Math.atan2(my - balls[0].y, mx - balls[0].x);
+                const dist = 90 + power * 0.8;
+                cueX = balls[0].x - Math.cos(angle) * dist;
+                cueY = balls[0].y - Math.sin(angle) * dist;
+            }
+        });
+
+        // mousedown (Thêm Ball-in-Hand: Đặt bi)
+        canvas.addEventListener('mousedown', (e) => {
+            if (gameMode === 'menu' || !allStopped || gameOver || (gameMode === '1p' && currentPlayer === 2)) return;
+            
+            if (ballInHand) {
+                // Đặt bi xuống, hủy trạng thái "ball-in-hand"
+                ballInHand = false;
+                return; 
+            }
+
+            shooting = true;
+            power = 0;
+            if (audioCtx?.state === 'suspended') audioCtx.resume();
+        });
+
+        // mouseup (Thêm Ball-in-Hand check & Ghi nhận cú bắn)
+        canvas.addEventListener('mouseup', (e) => {
+            if (ballInHand || !shooting || gameMode === 'menu' || !allStopped || gameOver || (gameMode === '1p' && currentPlayer === 2)) {
+                shooting = false; 
+                return;
+            }
+
+            const force = power / 2.2;
+            balls[0].vx = Math.cos(angle) * force;
+            balls[0].vy = Math.sin(angle) * force;
+            playShoot();
+            shooting = false;
+            firstContact = null;
+            pottedThisTurn = [];
+            foul = false;
+            shotTaken = true; 
+        });
+
+        document.addEventListener('keydown', (e) => {
+            if (e.key.toLowerCase() === 'r') restart();
+        });
+
+        // Animate
+        function animate() {
+            requestAnimationFrame(animate);
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+            // ... (Vẽ Bàn Bi-a) ...
+            const feltGrad = ctx.createLinearGradient(0, 0, 0, canvas.height);
+            feltGrad.addColorStop(0, '#32CD32');
+            feltGrad.addColorStop(0.5, '#228B22');
+            feltGrad.addColorStop(1, '#006400');
+            ctx.fillStyle = feltGrad;
+            ctx.fillRect(25, 25, canvas.width - 50, canvas.height - 50);
+
+            ctx.strokeStyle = '#654321';
+            ctx.lineWidth = 35;
+            ctx.lineCap = 'round';
+            ctx.shadowColor = '#8B4513';
+            ctx.shadowBlur = 15;
+            ctx.shadowOffsetY = 10;
+            ctx.beginPath();
+            ctx.moveTo(25, 25); ctx.lineTo(canvas.width - 25, 25);
+            ctx.moveTo(25, canvas.height - 25); ctx.lineTo(canvas.width - 25, canvas.height - 25);
+            ctx.moveTo(25, 25); ctx.lineTo(25, canvas.height - 25);
+            ctx.moveTo(canvas.width - 25, 25); ctx.lineTo(canvas.width - 25, canvas.height - 25);
+            ctx.stroke();
+
+            ctx.shadowBlur = 0;
+            ctx.fillStyle = '#111';
+            ctx.shadowColor = '#000';
+            ctx.shadowBlur = 20;
+            pockets.forEach(p => {
+                ctx.beginPath();
+                ctx.arc(p.x, p.y, pocketRadius, 0, Math.PI * 2);
+                ctx.fill();
+            });
+
+            ctx.fillStyle = '#FFF';
+            ctx.shadowBlur = 0;
+            ctx.beginPath();
+            ctx.arc(275, canvas.height / 2, 4, 0, Math.PI * 2);
+            ctx.arc(canvas.width - 275, canvas.height / 2, 4, 0, Math.PI * 2);
+            ctx.fill();
+
+            particles.forEach(p => p.update());
+            particles = particles.filter(p => p.life > 0);
+            particles.forEach(p => p.draw());
+
+            balls.forEach(ball => {
+                if (!ball.potted) ball.updatePosition();
+            });
+
+            // Pocket detection
+            const newlyPotted = [];
+            balls.forEach(ball => {
+                if (ball.potted) return;
+                for (let pocket of pockets) {
+                    const dist = Math.hypot(ball.x - pocket.x, ball.y - pocket.y);
+                    if (dist < radius + 14) { 
+                        newlyPotted.push(ball);
+                        break;
+                    }
+                }
+            });
+            newlyPotted.forEach(ball => {
+                if (ball.group === 'cue') {
+                    // Bi chủ vào lỗ -> Lỗi, đặt bi lại
+                    ball.x = 250;
+                    ball.y = canvas.height / 2;
+                    ball.vx = 0;
+                    ball.vy = 0;
+                    foul = true;
+                } else {
+                    ball.potted = true;
+                    ball.vx = 0;
+                    ball.vy = 0;
+                    pottedThisTurn.push(ball);
+                    playPot();
+                    for (let i = 0; i < 20; i++) {
+                        particles.push(new Particle(ball.x, ball.y));
+                    }
+                }
+            });
+
+            // Collisions (Giữ nguyên)
+            for (let i = 0; i < balls.length; i++) {
+                for (let j = i + 1; j < balls.length; j++) {
+                    const a = balls[i];
+                    const b = balls[j];
+                    if (a.potted || b.potted) continue;
+                    const dx = b.x - a.x;
+                    const dy = b.y - a.y;
+                    const dist = Math.hypot(dx, dy);
+                    if (dist < a.radius + b.radius + 0.5) {
+                        const collAngle = Math.atan2(dy, dx);
+                        const sin = Math.sin(collAngle);
+                        const cos = Math.cos(collAngle);
+                        const avx = a.vx * cos + a.vy * sin;
+                        const avy = a.vy * cos - a.vx * sin;
+                        const bvx = b.vx * cos + b.vy * sin;
+                        const bvy = b.vy * cos - b.vx * sin;
+                        a.vx = bvx * cos - avy * sin;
+                        a.vy = bvx * sin + avy * cos;
+                        b.vx = avx * cos - bvy * sin;
+                        b.vy = avx * sin + bvy * cos;
+                        const overlap = (a.radius + b.radius - dist) / 2;
+                        a.x -= overlap * cos;
+                        a.y -= overlap * sin;
+                        b.x += overlap * cos;
+                        b.y += overlap * sin;
+                        playCollision();
+                        if (!firstContact && (a.group === 'cue' || b.group === 'cue')) {
+                            firstContact = a.group === 'cue' ? b : a;
+                        }
+                    }
+                }
+            }
+
+            // Clamp walls LAST
+            balls.forEach(ball => {
+                if (!ball.potted) ball.clampWalls();
+            });
+
+            // Check stopped
+            allStopped = true;
+            balls.forEach(ball => {
+                if (!ball.potted && (Math.abs(ball.vx) > 0.08 || Math.abs(ball.vy) > 0.08)) {
+                    allStopped = false;
+                }
+            });
+
+            // FIX LỖI: Turn management 
+            if (allStopped) {
+                if (shotTaken) { 
+                    framesSinceStopped++;
+                    if (framesSinceStopped >= 30) { 
+                        
+                        if (!groupsAssigned && pottedThisTurn.length > 0 && pottedThisTurn[0].group !== 'black') {
+                            groupsAssigned = true;
+                            playerGroup = pottedThisTurn[0].group;
+                            opponentGroup = playerGroup === 'solid' ? 'stripe' : 'solid';
+                        }
+                        const continueTurn = checkTurnContinue();
+                        
+                        if (foul || !continueTurn || pottedThisTurn.length === 0) {
+                            currentPlayer = 3 - currentPlayer;
+                            
+                            // Kích hoạt Ball-in-Hand nếu có lỗi
+                            if (foul) {
+                                ballInHand = true; 
+                            }
+                        }
+                        
+                        updateTurnIndicator();
+                        updateBallDisplays();
+
+                        // Win check
+                        if (gameOver) {
+                            if (winner === 1) p1Wins++;
+                            else p2Wins++;
+                            updateScores();
+                            return;
+                        }
+
+                        // Reset flags sau khi chuyển lượt thành công
+                        firstContact = null;
+                        pottedThisTurn = [];
+                        foul = false;
+                        framesSinceStopped = 0;
+                        shotTaken = false; 
+                    }
+                }
+            } else {
+                framesSinceStopped = 0;
+            }
+
+            // AI (ĐÃ SỬA LỖI BALL-IN-HAND)
+            if (allStopped && gameMode === '1p' && currentPlayer === 2 && !gameOver && framesSinceStopped >= 30) {
+                
+                // FIX LỖI: AI tự động đặt bi nếu nó có quyền Bi trong tay
+                if (ballInHand) {
+                    ballInHand = false; 
+                }
+                
+                aiCurrentTime++;
+                if (aiCurrentTime >= aiThinkingTime) {
+                    aiShoot();
+                    aiCurrentTime = 0;
+                }
+            }
+
+            // Draw balls 
+            balls.forEach(ball => {
+                if (!ball.potted) ball.draw();
+            });
+
+            // Player UI (Thêm Ball-in-Hand UI)
+            const isHumanTurn = allStopped && !gameOver && !(gameMode === '1p' && currentPlayer === 2);
+            if (isHumanTurn) {
+                
+                if (ballInHand) {
+                    // Hiển thị Ball-in-Hand UI
+                    
+                    ctx.fillStyle = 'rgba(255, 255, 255, 0.2)';
+                    ctx.beginPath();
+                    ctx.arc(balls[0].x, balls[0].y, radius + 5, 0, Math.PI * 2);
+                    ctx.fill();
+                    
+                    ctx.fillStyle = '#FFF';
+                    ctx.font = 'bold 20px Arial';
+                    ctx.textAlign = 'center';
+                    ctx.shadowColor = 'black';
+                    ctx.shadowBlur = 5;
+                    ctx.fillText('Đặt bi chủ (Nhấp chuột để đặt)', canvas.width / 2, canvas.height - 40);
+                    ctx.shadowBlur = 0;
+
+                } else { 
+                    // Vẽ Aim line
+                    ctx.strokeStyle = 'rgba(255,255,255,0.8)';
+                    ctx.lineWidth = 3;
+                    ctx.setLineDash([6, 12]);
+                    ctx.lineCap = 'round';
+                    ctx.beginPath();
+                    ctx.moveTo(balls[0].x, balls[0].y);
+                    ctx.lineTo(balls[0].x + Math.cos(angle) * 450, balls[0].y + Math.sin(angle) * 450);
+                    ctx.stroke();
+                    ctx.setLineDash([]);
+
+                    // Cue stick 
+                    const cueGrad = ctx.createLinearGradient(cueX, cueY, balls[0].x, balls[0].y);
+                    cueGrad.addColorStop(0, '#D2B48C');
+                    cueGrad.addColorStop(0.5, '#DEB887');
+                    cueGrad.addColorStop(1, '#8B4513');
+                    ctx.strokeStyle = cueGrad;
+                    ctx.lineWidth = 14;
+                    ctx.lineCap = 'round';
+                    ctx.shadowColor = '#8B4513';
+                    ctx.shadowBlur = 15;
+                    ctx.beginPath();
+                    ctx.moveTo(balls[0].x, balls[0].y);
+                    ctx.lineTo(cueX, cueY);
+                    ctx.stroke();
+
+                    // Power bar
+                    if (shooting) {
+                        const barX = canvas.width / 2 - 90;
+                        const barY = canvas.height - 50;
+                        ctx.fillStyle = 'rgba(0,0,0,0.8)';
+                        ctx.fillRect(barX, barY, 180, 25);
+                        const hue = Math.min(120, power * 1.8);
+                        ctx.fillStyle = `hsl(${hue}, 100%, 50%)`;
+                        ctx.fillRect(barX + 8, barY + 8, (power / maxPower) * 164, 9);
+                        ctx.fillStyle = '#FFF';
+                        ctx.font = 'bold 18px Arial';
+                        ctx.textAlign = 'center';
+                        ctx.textBaseline = 'middle';
+                        ctx.fillText(`${Math.round((power / maxPower) * 100)}%`, canvas.width / 2, barY + 12.5);
+                    }
+                } 
+            }
+
+            // Charge power
+            if (shooting) {
+                power = Math.min(maxPower, power + 1.2);
+            }
+        }
+
+        initAudio();
+        initBalls();
+        updateScores();
+        updateTurnIndicator();
+        updateBallDisplays();
+        updateDifficultyButtons(); 
+        animate();
+    </script>
+</body>
+</html>
