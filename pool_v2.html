@@ -1,0 +1,1558 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Ultimate 8-Ball Pool - Full Code & Enhanced UI & Smart AI</title>
+    <style>
+        body {
+            margin: 0;
+            overflow: hidden;
+            background: linear-gradient(135deg, #1a1a2e, #16213e);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-family: 'Arial', sans-serif;
+            color: white;
+            padding-top: 150px; 
+        }
+        canvas {
+            background: #228B22;
+            border: 20px solid #8B4513;
+            border-radius: 10px;
+            box-shadow: 0 0 30px rgba(139,69,19,0.8);
+            cursor: crosshair;
+        }
+        
+        /* === UI BÊN NGOÀI CANVAS - CẢI TIẾN FLEXBOX === */
+        #ui {
+            position: absolute;
+            top: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            text-align: center;
+            z-index: 10;
+            background: rgba(0, 0, 0, 0.75); 
+            padding: 15px 30px;
+            border-radius: 15px;
+            border: 1px solid #FFD700;
+            box-shadow: 0 5px 20px rgba(0,0,0,0.7);
+            display: flex; 
+            flex-direction: column;
+            align-items: center;
+        }
+        #turnIndicator {
+            font-size: 30px;
+            font-weight: bold;
+            text-shadow: 2px 2px 4px black;
+            margin-bottom: 5px;
+            color: #4CAF50; 
+        }
+        #scores {
+            font-size: 20px;
+            color: #FFD700;
+            text-shadow: 1px 1px 3px black;
+            margin-bottom: 15px;
+        }
+        #controls {
+            display: flex;
+            gap: 10px;
+            align-items: center;
+        }
+        .control-group {
+            display: flex;
+            gap: 10px;
+        }
+        button {
+            background: #D2B48C;
+            border: 2px solid #8B4513; 
+            padding: 8px 15px;
+            font-size: 14px;
+            font-weight: bold;
+            border-radius: 6px;
+            cursor: pointer;
+            box-shadow: 0 3px 6px rgba(0,0,0,0.3);
+            transition: all 0.2s;
+            white-space: nowrap;
+        }
+        button:hover {
+            background: #DEB887;
+            transform: translateY(-1px);
+        }
+        
+        /* Hiển thị danh sách bi */
+        #playerBalls, #aiBalls {
+            position: absolute;
+            top: 100px;
+            font-size: 16px;
+            text-shadow: 1px 1px 2px black;
+            background: rgba(0, 0, 0, 0.6);
+            padding: 10px;
+            border-radius: 8px;
+            width: 250px;
+            display: flex;
+            flex-direction: column;
+            gap: 5px;
+        }
+        #playerBalls { 
+            left: 20px; 
+            border-left: 5px solid #00BFFF; /* Màu xanh dương cho P1 */
+        }
+        #aiBalls { 
+            right: 20px; 
+            border-right: 5px solid #FF4500; /* Màu cam đỏ cho P2/AI */
+        }
+        .ball-list {
+            font-weight: normal;
+            font-size: 14px;
+            word-wrap: break-word;
+        }
+
+        /* Instructions & Ball-in-Hand error */
+        #instructions {
+            position: absolute;
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            color: #DDD;
+            font-size: 14px;
+            text-align: center;
+            text-shadow: 1px 1px 2px black;
+            max-width: 800px;
+            background: rgba(0, 0, 0, 0.4);
+            padding: 8px;
+            border-radius: 8px;
+        }
+        #ballInHandError {
+            color: #FF0000;
+            font-weight: bold;
+            display: none; /* Mặc định ẩn */
+        }
+
+        /* NEW: Spin Control UI */
+        #spinControlContainer {
+            position: absolute;
+            bottom: 100px; 
+            right: 20px;
+            text-align: center;
+            z-index: 100;
+        }
+        #spinControl {
+            width: 60px;
+            height: 60px;
+            border: 2px solid #FFF;
+            border-radius: 50%;
+            background: #444;
+            margin-top: 5px;
+            position: relative;
+            cursor: pointer;
+        }
+        #spinMarker {
+            position: absolute;
+            width: 10px;
+            height: 10px;
+            background: #FF0000;
+            border-radius: 50%;
+            pointer-events: none; /* Không chặn click vào div cha */
+            transform: translate(-50%, -50%);
+            transition: all 0.1s ease-out;
+        }
+        #spinLabel {
+            font-size: 14px;
+            font-weight: bold;
+            color: #FFF;
+            text-shadow: 1px 1px 2px black;
+        }
+    </style>
+</head>
+<body>
+    <canvas id="canvas"></canvas>
+    
+    <div id="ui">
+        <div id="turnIndicator">Chào mừng! Chọn chế độ</div>
+        <div id="scores">P1: 0 | P2/AI: 0</div>
+        <div id="controls">
+            <div class="control-group">
+                <button id="btn1p">1 Người (vs AI)</button>
+                <div id="aiDifficultyControls" style="display: none; gap: 5px;">
+                    <button id="btnAiEasy">Dễ</button>
+                    <button id="btnAiMedium">Vừa</button>
+                    <button id="btnAiHard">Khó</button>
+                </div>
+            </div>
+            <button id="btn2p">2 Người chơi</button>
+            <button id="restartBtn">Chơi lại</button>
+        </div>
+    </div>
+    
+    <div id="playerBalls">Bi của bạn: TBD</div>
+    <div id="aiBalls">Bi đối thủ: TBD</div>
+
+    <div id="spinControlContainer">
+        <div id="spinLabel">BI XOÁY (ENGLISH)</div>
+        <div id="spinControl">
+            <div id="spinMarker"></div>
+        </div>
+    </div>
+    
+    <div id="instructions">
+        NHẮM: Chuột | BẮN: Giữ Chuột Trái (Thanh Lực) | 
+        <span style="color: yellow; font-weight: bold;">ĐIỀU BI: Click vào ô Bi Xoáy để đặt điểm chạm bi chủ!</span> 
+        | R: Chơi lại 🎱
+        <div id="ballInHandError">KHÔNG HỢP LỆ! Bi chủ đang chồng lên bi khác.</div>
+    </div>
+    
+    <script>
+        const canvas = document.getElementById('canvas');
+        const ctx = canvas.getContext('2d');
+        canvas.width = 1000;
+        canvas.height = 500;
+
+        // --- CÁC PHẦN TỬ UI MỚI ---
+        const turnIndicator = document.getElementById('turnIndicator');
+        const scoresDiv = document.getElementById('scores');
+        const playerBallsDiv = document.getElementById('playerBalls');
+        const aiBallsDiv = document.getElementById('aiBalls');
+        const btn1p = document.getElementById('btn1p');
+        const btn2p = document.getElementById('btn2p');
+        const restartBtn = document.getElementById('restartBtn');
+        const aiDifficultyControls = document.getElementById('aiDifficultyControls');
+        const btnAiEasy = document.getElementById('btnAiEasy');
+        const btnAiMedium = document.getElementById('btnAiMedium');
+        const btnAiHard = document.getElementById('btnAiHard');
+        const ballInHandError = document.getElementById('ballInHandError');
+        const spinControl = document.getElementById('spinControl');
+        const spinMarker = document.getElementById('spinMarker');
+        // -------------------------
+
+        // Audio setup (Giữ nguyên)
+        let audioCtx;
+        let lastSoundTime = 0;
+        let lastRailSoundTime = 0;
+        function initAudio() {
+            audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+        }
+        function playSound(freq, duration, type = 'sine', vol = 0.3) {
+            if (!audioCtx) return;
+            const osc = audioCtx.createOscillator();
+            osc.type = type;
+            osc.frequency.value = freq;
+            const gain = audioCtx.createGain();
+            gain.gain.setValueAtTime(vol, audioCtx.currentTime);
+            gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + duration);
+            osc.connect(gain);
+            gain.connect(audioCtx.destination);
+            osc.start();
+            osc.stop(audioCtx.currentTime + duration);
+        }
+        function playCollision() {
+            if (Date.now() - lastSoundTime > 80) {
+                playSound(200 + Math.random() * 100, 0.08);
+                lastSoundTime = Date.now();
+            }
+        }
+        function playPot() {
+            playSound(440 + Math.random() * 200, 0.15);
+        }
+        function playShoot() {
+            playSound(100, 0.1, 'triangle', 0.2);
+        }
+        function playRailHit() {
+            if (Date.now() - lastRailSoundTime > 120) {
+                playSound(150 + Math.random() * 50, 0.05, 'square', 0.15);
+                lastRailSoundTime = Date.now();
+            }
+        }
+        function playWin() {
+            playSound(523, 0.1);
+            setTimeout(() => playSound(659, 0.1), 120);
+            setTimeout(() => playSound(783, 0.2), 240);
+        }
+        function playLose() {
+            playSound(300, 0.15, 'sawtooth');
+            setTimeout(() => playSound(200, 0.25, 'sawtooth'), 170);
+        }
+        function playClick() {
+            playSound(600, 0.05, 'triangle', 0.2);
+        }
+
+        // Particle Class (Giữ nguyên)
+        class Particle {
+            constructor(x, y) {
+                this.x = x;
+                this.y = y;
+                this.vx = (Math.random() - 0.5) * 12;
+                this.vy = (Math.random() - 0.5) * 12;
+                this.life = 1;
+                this.decay = 0.03;
+                this.color = `hsl(${Math.random()*60 + 50}, 100%, 60%)`;
+            }
+            update() {
+                this.x += this.vx;
+                this.vy += 0.2; 
+                this.vx *= 0.98;
+                this.vy *= 0.98;
+                this.life -= this.decay;
+            }
+            draw() {
+                ctx.save();
+                ctx.globalAlpha = this.life;
+                ctx.fillStyle = this.color;
+                ctx.shadowColor = this.color;
+                ctx.shadowBlur = 10;
+                ctx.beginPath();
+                ctx.arc(this.x, this.y, 4 * this.life, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.restore();
+            }
+        }
+        let particles = [];
+        
+        // Ball Class (Cập nhật để vẽ chấm xoáy)
+        class Ball {
+            constructor(x, y, radius, color, number, isStriped = false, group = null) {
+                this.x = x;
+                this.y = y;
+                this.radius = radius;
+                this.color = color;
+                this.number = number;
+                this.isStriped = isStriped;
+                this.group = group;
+                this.vx = 0;
+                this.vy = 0;
+                this.potted = false;
+                this.effectX = 0; // NEW: Horizontal Spin Offset (-1 to 1)
+                this.effectY = 0; // NEW: Vertical Spin Offset (-1 to 1)
+            }
+
+            draw() {
+                ctx.save();
+                ctx.shadowColor = 'rgba(0,0,0,0.5)';
+                ctx.shadowBlur = 10;
+                ctx.shadowOffsetX = 4;
+                ctx.shadowOffsetY = 4;
+
+                const grad = ctx.createRadialGradient(
+                    this.x - this.radius / 3, this.y - this.radius / 3, 0,
+                    this.x, this.y, this.radius
+                );
+                grad.addColorStop(0, 'rgba(255,255,255,0.8)');
+                grad.addColorStop(0.7, this.color);
+                grad.addColorStop(1, this.color);
+
+                ctx.beginPath();
+                ctx.arc(this.x, this.y, this.radius, 0, Math.PI * 2);
+                if (this.isStriped) {
+                    ctx.fillStyle = '#FFF';
+                    ctx.fill();
+                    // Vẽ sọc
+                    ctx.beginPath();
+                    // Stripe is slightly thinner for realism
+                    ctx.arc(this.x, this.y, this.radius * 0.7, Math.PI / 4, 5 * Math.PI / 4);
+                    ctx.lineTo(this.x, this.y);
+                    ctx.fillStyle = this.color;
+                    ctx.fill();
+                    // Vòng tròn số
+                    ctx.beginPath();
+                    ctx.arc(this.x, this.y, this.radius / 2.2, 0, Math.PI * 2);
+                    ctx.fillStyle = '#FFF';
+                    ctx.fill();
+                } else {
+                    ctx.fillStyle = grad;
+                    ctx.fill();
+                }
+                ctx.closePath();
+
+                // Điểm sáng
+                ctx.strokeStyle = 'rgba(255,255,255,0.6)';
+                ctx.lineWidth = 2;
+                ctx.beginPath();
+                ctx.arc(this.x - this.radius / 3, this.y - this.radius / 3, this.radius / 3, 0, Math.PI);
+                ctx.stroke();
+                
+                // NEW: Draw Cue Ball Effect Spot
+                if (this.group === 'cue') {
+                    ctx.fillStyle = '#000'; 
+                    ctx.shadowColor = 'transparent';
+                    ctx.shadowBlur = 0;
+                    ctx.beginPath();
+                    // Y-axis inversion: up spin (effectY > 0) means dot is higher (y- coordinate is smaller)
+                    const effectX = this.x + this.effectX * (this.radius / 1.5); 
+                    const effectY = this.y - this.effectY * (this.radius / 1.5);
+                    ctx.arc(effectX, effectY, this.radius / 6, 0, Math.PI * 2);
+                    ctx.fill();
+                }
+
+                // Số
+                if (this.number) {
+                    // Cải tiến: Bi sọc số nằm trong vòng trắng
+                    if (this.isStriped) {
+                        ctx.fillStyle = '#000'; 
+                        ctx.font = `bold ${this.radius * 0.7}px Arial`;
+                    } else {
+                        ctx.fillStyle = this.number === 8 ? '#FFF' : '#FFF';
+                        ctx.font = `bold ${this.radius * 0.9}px Arial`;
+                    }
+
+                    ctx.textAlign = 'center';
+                    ctx.textBaseline = 'middle';
+                    ctx.shadowColor = 'transparent';
+                    ctx.shadowBlur = 0;
+                    
+                    // Vẽ vòng tròn số cho bi trơn (giúp số trắng nổi bật)
+                    if (!this.isStriped && this.number !== 8) {
+                        ctx.beginPath();
+                        ctx.arc(this.x, this.y, this.radius / 2.2, 0, Math.PI * 2);
+                        ctx.fillStyle = '#FFF';
+                        ctx.fill();
+                        ctx.fillStyle = '#000';
+                        ctx.font = `bold ${this.radius * 0.7}px Arial`;
+                    }
+                    
+                    ctx.fillText(this.number.toString(), this.x, this.y);
+                }
+
+                ctx.restore();
+            }
+
+            updatePosition(friction = 0.985) {
+                this.x += this.vx;
+                this.y += this.vy;
+                
+                // NEW: Apply spin-like friction
+                if (this.group === 'cue' && (Math.abs(this.effectX) > 0.05 || Math.abs(this.effectY) > 0.05)) {
+                    // Simulated spin friction: sidespin causes a slight curve over time
+                    this.vx -= this.vy * this.effectX * 0.0005; 
+                    this.vy += this.vx * this.effectX * 0.0005;
+                }
+                
+                this.vx *= friction;
+                this.vy *= friction;
+            }
+
+            clampWalls() {
+                const border = 25;
+                let hit = false; 
+
+                if (this.x - this.radius < border) {
+                    this.x = border + this.radius;
+                    this.vx = -this.vx * 0.85;
+                    hit = true;
+                } else if (this.x + this.radius > canvas.width - border) {
+                    this.x = canvas.width - border - this.radius;
+                    this.vx = -this.vx * 0.85;
+                    hit = true;
+                }
+                if (this.y - this.radius < border) {
+                    this.y = border + this.radius;
+                    this.vy = -this.vy * 0.85;
+                    hit = true;
+                } else if (this.y + this.radius > canvas.height - border) {
+                    this.y = canvas.height - border - this.radius;
+                    this.vy = -this.vy * 0.85;
+                    hit = true;
+                }
+
+                if (hit && !this.potted) {
+                    playRailHit();
+                    if (this.group === 'cue') {
+                        cueHitRail = true;
+                        // NEW: Rail effect based on sidespin (realism)
+                        if (this.effectX !== 0) {
+                            const sideSpinBoost = this.effectX * 0.02; // Small boost
+                            if (Math.abs(this.vx) > Math.abs(this.vy)) { // Horizontal rail
+                                this.vx += (this.vx > 0 ? -1 : 1) * sideSpinBoost;
+                            } else { // Vertical rail
+                                this.vy += (this.vy > 0 ? -1 : 1) * sideSpinBoost;
+                            }
+                        }
+                    } else {
+                        objectBallHitRail = true;
+                    }
+                }
+            }
+        }
+
+        // Game State Variables
+        let balls = [];
+        let radius = 15;
+        let gameMode = 'menu';
+        let p1Wins = 0;
+        let p2Wins = 0;
+        let currentPlayer = 1;
+        let playerGroup = null;
+        let opponentGroup = null;
+        let groupsAssigned = false;
+        let allStopped = true;
+        let framesSinceStopped = 0;
+        let aiThinkingTime = 90;
+        let aiCurrentTime = 0;
+        let pottedThisTurn = [];
+        let firstContact = null;
+        let foul = false;
+        let gameOver = false;
+        let winner = null;
+        let shooting = false;
+        let power = 0;
+        let maxPower = 70;
+        let angle = 0;
+        let cueX = 0;
+        let cueY = 0;
+        
+        // NEW: English/Spin Vars (0 = center)
+        let cueEffectX = 0; // -1 to 1 (left to right)
+        let cueEffectY = 0; // -1 to 1 (bottom to top)
+        
+        let ballInHand = false; 
+        let aiDifficulty = 'medium';
+        let shotTaken = false; 
+        let cueHitRail = false; 
+        let objectBallHitRail = false;
+        
+        let isCallingPocket = false; 
+        let calledPocket = null; 
+        let potted8BallPocket = -1; 
+        let aiCalledPocket = -1; 
+
+        const pockets = [
+            {x: 25, y: 25}, {x: canvas.width / 2, y: 15}, {x: canvas.width - 25, y: 25},
+            {x: 25, y: canvas.height - 25}, {x: canvas.width / 2, y: canvas.height - 15}, {x: canvas.width - 25, y: canvas.height - 25}
+        ];
+        const pocketRadius = 22;
+        const pocketNames = ["Góc trên trái", "Giữa trên", "Góc trên phải", "Góc dưới trái", "Giữa dưới", "Góc dưới phải"];
+
+        function initBalls() {
+            balls = [];
+            const cueBall = new Ball(250, canvas.height / 2, radius, '#FFFFFF', 0, false, 'cue');
+            balls.push(cueBall);
+
+            // [ĐÃ SỬA] Cập nhật màu sắc cho đúng với đời thật: 
+            // 1/9: Vàng (#FFD700)
+            // 2/10: Xanh Dương (#4169E1)
+            // 3/11: Đỏ (#DC143C)
+            // 4/12: Tím (#9400D3)
+            // 5/13: Cam (#FF8C00)
+            // 6/14: Xanh Lục Đậm (#006400)
+            // 7/15: Nâu Đỏ/Đỏ Tía (Maroon) (#800000)
+            const solidColors = ['#FFD700', '#4169E1', '#DC143C', '#9400D3', '#FF8C00', '#006400', '#800000'];
+            const stripeColors = ['#FFD700', '#4169E1', '#DC143C', '#9400D3', '#FF8C00', '#006400', '#800000'];
+            
+            // Thứ tự xếp bi chuẩn (1 ở đỉnh, 8 ở giữa hàng 3, 2/9 ở 2 góc sau cùng)
+            const rackOrder = [1, 10, 3, 12, 8, 14, 4, 15, 6, 11, 5, 13, 7, 2, 9]; 
+            const groups = ['solid','stripe','solid','stripe','black','stripe','solid','stripe','solid','stripe','solid','stripe','solid','solid','stripe'];
+            
+            const apexX = canvas.width - 275; 
+            const apexY = canvas.height / 2; 
+            const dX = radius * 2 * 0.866; 
+            const dY = radius; 
+
+            let idx = 0;
+            for (let row = 0; row < 5; row++) {
+                for (let col = 0; col <= row; col++) {
+                    const num = rackOrder[idx];
+                    const grp = groups[idx];
+                    const isStriped = grp === 'stripe';
+                    const colrIdx = num === 8 ? 0 : (num > 8 ? (num - 9) : (num - 1));
+                    
+                    const color = grp === 'black' ? '#000000' : (isStriped ? stripeColors[colrIdx] : solidColors[colrIdx]);
+
+                    const x = apexX + row * dX;
+                    const y = apexY + (col * 2 * dY) - (row * dY); 
+
+                    balls.push(new Ball(x, y, radius, color, num, isStriped, grp));
+                    idx++;
+                }
+            }
+        }
+        
+        // Cập nhật isPathClear: Kiểm tra đường đi giữa 2 điểm (sx,sy) và (ex,ey) có bị bi khác (trừ targetBall) chặn không
+        function isPathClear(sx, sy, ex, ey, targetBall) {
+            const steps = 25;
+            for (let k = 0; k <= steps; k++) {
+                const px = sx + (ex - sx) * k / steps;
+                const py = sy + (ey - sy) * k / steps;
+                for (let ball of balls) {
+                    // Check all balls except potted, cue ball, and the intended target ball
+                    if (ball.potted || ball === balls[0] || ball === targetBall) continue; 
+                    
+                    if (Math.hypot(px - ball.x, py - ball.y) < radius * 2.2) {
+                        return false;
+                    }
+                }
+            }
+            return true;
+        }
+
+        function isCuePathSafe(startX, startY, vx, vy) {
+            let simX = startX;
+            let simY = startY;
+            let simVx = vx;
+            let simVy = vy;
+            const friction = 0.985;
+            const border = 25 + radius;
+
+            for (let i = 0; i < 300; i++) {
+                simX += simVx;
+                simY += simVy;
+                simVx *= friction;
+                simVy *= friction;
+
+                for (let pocket of pockets) {
+                    if (Math.hypot(simX - pocket.x, simY - pocket.y) < pocketRadius) {
+                        return false; 
+                    }
+                }
+                if (simX < border || simX > canvas.width - border || simY < border || simY > canvas.height - border) {
+                    // Assume hitting a rail is fine, but we're mainly concerned about scratching
+                }
+                
+                if (Math.abs(simVx) < 0.08 && Math.abs(simVy) < 0.08) {
+                    return true;
+                }
+            }
+            return true;
+        }
+        
+        function getGhostBallData() {
+            const cue = balls[0];
+            const dirX = Math.cos(angle);
+            const dirY = Math.sin(angle);
+            
+            let closestImpactDist = Infinity;
+            let hitBall = null;
+
+            for (let i = 1; i < balls.length; i++) {
+                const ball = balls[i];
+                if (ball.potted) continue;
+
+                const vX = ball.x - cue.x;
+                const vY = ball.y - cue.y;
+                const proj = vX * dirX + vY * dirY;
+                if (proj <= 0) continue;
+
+                const distSqr = (vX * vX + vY * vY) - (proj * proj);
+                const combinedRadius = radius * 2;
+
+                if (distSqr < combinedRadius * combinedRadius) {
+                    const thc = Math.sqrt(combinedRadius * combinedRadius - distSqr);
+                    const impactDist = proj - thc; 
+                    if (impactDist < closestImpactDist && impactDist > 0) {
+                        closestImpactDist = impactDist;
+                        hitBall = ball;
+                    }
+                }
+            }
+
+            if (hitBall) {
+                const ghostCueX = cue.x + dirX * closestImpactDist;
+                const ghostCueY = cue.y + dirY * closestImpactDist;
+                const targetAngle = Math.atan2(hitBall.y - ghostCueY, hitBall.x - ghostCueX);
+                
+                return {
+                    hit: true,
+                    ghostCue: { x: ghostCueX, y: ghostCueY },
+                    target: hitBall,
+                    targetDir: { x: Math.cos(targetAngle), y: Math.sin(targetAngle) }
+                };
+            }
+            return { hit: false };
+        }
+        
+        function updateScores() {
+            scoresDiv.textContent = `P1: ${p1Wins} | P2/AI: ${p2Wins}`;
+        }
+        
+        function updateBallDisplays() {
+            if (!playerGroup || !opponentGroup) {
+                playerBallsDiv.innerHTML = 'Bi của bạn: <span style="font-weight: normal;">Chưa xác định</span>';
+                aiBallsDiv.innerHTML = 'Bi đối thủ: <span style="font-weight: normal;">Chưa xác định</span>';
+                return;
+            }
+            const playerColor = playerGroup === 'solid' ? '#00BFFF' : '#FF4500';
+            const opponentColor = opponentGroup === 'solid' ? '#00BFFF' : '#FF4500';
+
+            const playerList = balls.filter(b => b.group === playerGroup && !b.potted && b.number).map(b => b.number).sort((a,b)=>a-b).join(', ');
+            const opponentList = balls.filter(b => b.group === opponentGroup && !b.potted && b.number).map(b => b.number).sort((a,b)=>a-b).join(', ');
+            
+            playerBallsDiv.innerHTML = `<span style="color:${playerColor}; font-size: 18px; font-weight: bold;">${playerGroup.toUpperCase()}</span>: <span class="ball-list">${playerList || 'HẾT BI'}</span>`;
+            aiBallsDiv.innerHTML = `<span style="color:${opponentColor}; font-size: 18px; font-weight: bold;">${opponentGroup.toUpperCase()}</span>: <span class="ball-list">${opponentList || 'HẾT BI'}</span>`;
+        }
+
+        function updateTurnIndicator() {
+            const isPlayer1Turn = currentPlayer === 1;
+            const name = gameMode === '1p' ? (isPlayer1Turn ? 'Lượt của bạn' : 'AI') : `Lượt Người chơi ${currentPlayer}`;
+            let status = '';
+            let color = '#4CAF50'; 
+
+            const ownGroup = currentPlayer === 1 ? playerGroup : opponentGroup;
+            const ownLeft = balls.filter(b => b.group === ownGroup && !b.potted && b.number).length;
+
+            if (gameOver) {
+                color = winner === 1 ? '#FFD700' : '#DC143C';
+                status = winner === 1 ? '🏆 BẠN THẮNG! 🏆' : '😢 BẠN THUA! 😢';
+            } else if (ballInHand) {
+                status = ' - BI TRONG TAY (PLACE CUE)';
+                color = '#00BFFF';
+            } else if (groupsAssigned) {
+                if (ownLeft === 0) {
+                    status = ' - BẮN BI 8';
+                    color = '#DC143C';
+                } else {
+                    status = ` - Nhóm: ${ (isPlayer1Turn ? playerGroup : opponentGroup).toUpperCase() }`;
+                }
+            } else {
+                status = ' - BẮN KHAI CUỘC!';
+            }
+
+            turnIndicator.style.color = color;
+            turnIndicator.innerHTML = gameOver ? status : `${name}${status}`;
+        }
+        
+        function updateDifficultyButtons() {
+            btnAiEasy.style.background = aiDifficulty === 'easy' ? '#DEB887' : '#D2B48C';
+            btnAiMedium.style.background = aiDifficulty === 'medium' ? '#DEB887' : '#D2B48C';
+            btnAiHard.style.background = aiDifficulty === 'hard' ? '#DEB887' : '#D2B48C';
+        }
+
+        function checkTurnContinue() {
+            const ownGroup = currentPlayer === 1 ? playerGroup : opponentGroup;
+            let continueTurn = false;
+            
+            // 1. Check for Foul by potting Cue Ball
+            const cuePotted = pottedThisTurn.some(b => b.group === 'cue');
+            if (cuePotted) {
+                foul = true;
+                ballInHand = true; 
+            }
+            
+            for (let ball of pottedThisTurn) {
+                if (ball.group === 'cue') continue; 
+
+                if (ball.group === ownGroup) {
+                    continueTurn = true;
+                } else if (ball.group === 'black') {
+                    const ownLeft = balls.filter(b => b.group === ownGroup && !b.potted && b.number).length;
+                    
+                    if (ownLeft === 0) {
+                        gameOver = true;
+                        winner = currentPlayer;
+                    } else {
+                        // LỖI: Đánh bi 8 vào lỗ sớm -> THUA
+                        foul = true; 
+                        gameOver = true;
+                        winner = 3 - currentPlayer;
+                    }
+                } else if (groupsAssigned) {
+                    // Bi của đối thủ vào lỗ -> Lỗi (trừ khi là Break)
+                    foul = true; 
+                }
+            }
+            
+            // 2. Check First Contact Foul (Chỉ áp dụng khi bi nhóm đã được xác định)
+            if (groupsAssigned && !foul && shotTaken) {
+                if (!firstContact) {
+                    foul = true;
+                    ballInHand = true;
+                } else {
+                    const requiredGroup = balls.filter(b => b.group === ownGroup && !b.potted && b.number).length > 0 ? ownGroup : 'black';
+                    if (firstContact.group !== requiredGroup) {
+                        foul = true;
+                        ballInHand = true;
+                    }
+                }
+            }
+            
+            // 3. Check Rail Contact/Potting Foul (Nếu không có bi nào vào lỗ HỢP LỆ)
+            if (pottedThisTurn.filter(b => b.group === ownGroup).length === 0 && !foul && groupsAssigned && shotTaken) {
+                if (!cueHitRail && !objectBallHitRail) {
+                    foul = true;
+                    ballInHand = true;
+                }
+            }
+
+            // 4. Nếu là lỗi, người chơi tiếp theo được bi trong tay (trừ lỗi đánh bi 8)
+            if (foul && !gameOver) {
+                ballInHand = true;
+            }
+            
+            // Nếu có lỗi, không được chơi tiếp
+            if (foul) return false;
+
+            return continueTurn;
+        }
+
+        // --- AI LOGIC (CẢI TIẾN) ---
+        function aiPlaceBall() {
+            const cue = balls[0];
+            const safeX = 250;
+            const safeY = canvas.height / 2;
+            
+            cue.x = safeX + (Math.random() * 80 - 40); // Đặt trong khu vực sau vạch
+            cue.y = safeY + (Math.random() * 80 - 40);
+            
+            let attempts = 0;
+            const border = 25 + radius;
+            const headStringX = 275; // [ĐÃ SỬA]
+            
+            while(attempts < 100) {
+                let overlap = false;
+                for (let i = 1; i < balls.length; i++) {
+                    const ball = balls[i];
+                    if (ball.potted) continue;
+                    if (Math.hypot(cue.x - ball.x, cue.y - ball.y) < radius * 2 + 0.5) { 
+                        overlap = true;
+                        break;
+                    }
+                }
+                if (!overlap) break;
+
+                cue.x += (Math.random() - 0.5) * 5;
+                cue.y += (Math.random() - 0.5) * 5;
+                
+                // [ĐÃ SỬA] Giới hạn X để chỉ đặt bi sau vạch đầu (Head String: X < 275)
+                cue.x = Math.max(border, Math.min(headStringX, cue.x)); 
+                cue.y = Math.max(border, Math.min(canvas.height - border, cue.y));
+                
+                attempts++;
+            }
+        }
+        
+        function aiShoot() {
+            const cue = balls[0];
+            aiCalledPocket = -1;
+
+            if (!groupsAssigned) {
+                // Logic khai cuộc: Luôn đánh mạnh vào bi đầu (bi 1)
+                const headPin = balls.find(b => b.number === 1); 
+                if (headPin) {
+                    const targetX = headPin.x; 
+                    const targetY = headPin.y;
+                    const breakAngle = Math.atan2(targetY - cue.y, targetX - cue.x);
+                    
+                    let breakPower = maxPower * 0.9;
+                    if (aiDifficulty === 'easy') breakPower = maxPower * 0.7;
+
+                    cue.vx = Math.cos(breakAngle) * (breakPower / 2.5);
+                    cue.vy = Math.sin(breakAngle) * (breakPower / 2.5);
+                } else {
+                    cue.vx = (maxPower / 3); 
+                    cue.vy = 0.1;
+                }
+                
+                playShoot();
+                firstContact = null; pottedThisTurn = []; foul = false; shotTaken = true; 
+                cueHitRail = false; objectBallHitRail = false;
+                return;
+            }
+
+            let bestScore = -Infinity;
+            let bestAngle = 0;
+            let bestPower = 30;
+            let bestEffectX = 0; 
+            let bestEffectY = 0;
+
+            const ownGroup = opponentGroup; 
+            let targets = balls.filter(b => !b.potted && b.group === ownGroup && b.number);
+            let is8BallShot = false;
+            
+            if (targets.length === 0) {
+                const blackBall = balls.find(b => b.group === 'black' && !b.potted);
+                if (blackBall) {
+                    targets = [blackBall];
+                    is8BallShot = true;
+                }
+            }
+            
+            if (targets.length === 0) {
+                // Không còn bi mục tiêu, đánh nhẹ để tránh lỗi
+                bestAngle = angle; 
+                bestPower = 15;
+            } else {
+                
+                let angleVariance = 0.2; // Easy
+                let powerVariance = 15;
+                if (aiDifficulty === 'medium') { angleVariance = 0.05; powerVariance = 5; }
+                if (aiDifficulty === 'hard') { angleVariance = 0.01; powerVariance = 2; }
+                
+                const effects = [-1, 0, 1].map(e => e * 0.8); // Test 9 spin spots
+                effects.push(0);
+
+                for (let target of targets) {
+                    for (let i = 0; i < pockets.length; i++) {
+                        const pocket = pockets[i];
+                        
+                        // NEW: Check if path from target to pocket is clear
+                        if (!isPathClear(target.x, target.y, pocket.x, pocket.y, target)) continue; 
+
+                        const tx = pocket.x - target.x;
+                        const ty = pocket.y - target.y;
+                        const tdist = Math.hypot(tx, ty);
+                        const dirX = tx / tdist;
+                        const dirY = ty / tdist;
+                        const hitX = target.x - dirX * (radius * 2); // Điểm đánh chính xác (tâm bi chủ)
+                        const hitY = target.y - dirY * (radius * 2);
+                        
+                        const cdist = Math.hypot(hitX - cue.x, hitY - cue.y);
+                        if (cdist < 30) continue; // Quá gần
+
+                        for (let effectX of effects) {
+                            for (let effectY of effects) {
+                                
+                                let cAngle = Math.atan2(hitY - cue.y, hitX - cue.x);
+                                
+                                // NEW: Apply simple AI English simulation to aim better
+                                const angleShift = effectX * 0.05; 
+                                cAngle += angleShift; 
+                                
+                                // NEW: Check if cue path to hit point is clear
+                                if (!isPathClear(cue.x, cue.y, hitX, hitY, target)) continue;
+
+                                let currentPower = Math.max(25, Math.min(65, cdist * 0.2 + tdist * 0.1));
+                                
+                                // NEW: Power adjustment for top/back spin
+                                currentPower *= (1 + effectY * 0.1); 
+
+                                // Scoring
+                                let score = 5000 / (cdist + tdist * 0.5); // Cơ sở: càng gần càng tốt
+                                
+                                // Bi mục tiêu đang nằm thẳng hàng với lỗ -> thưởng
+                                const straightShotBonus = Math.abs(cAngle - Math.atan2(target.y - cue.y, target.x - cue.x));
+                                if (straightShotBonus < 0.05) score += 1000;
+                                
+                                // Dự đoán bi chủ sau va chạm
+                                const force = currentPower / 2.5;
+                                const impactVx = Math.cos(cAngle) * force;
+                                const impactVy = Math.sin(cAngle) * force;
+                                
+                                // Angle of target's exit path
+                                const targetExitAngle = Math.atan2(target.y - hitY, target.x - hitX); 
+                                
+                                // Simple collision calculation to estimate cue ball's post-impact direction
+                                const dAngle = cAngle - targetExitAngle;
+                                const cuePostAngle = cAngle - Math.PI/2; // Rough estimate of 90-degree separation
+                                const cueNewVx = Math.cos(cuePostAngle) * force * 0.5; // Giảm lực sau va chạm
+                                const cueNewVy = Math.sin(cuePostAngle) * force * 0.5;
+                                
+                                if (!isCuePathSafe(hitX, hitY, cueNewVx, cueNewVy)) {
+                                    score -= 15000; // Penalty for scratch
+                                }
+                                
+                                // Thêm ngẫu nhiên (độ chính xác của AI)
+                                score += (Math.random() - 0.5) * angleVariance * 500; 
+
+                                if (score > bestScore) {
+                                    bestScore = score;
+                                    bestAngle = cAngle;
+                                    bestPower = currentPower;
+                                    bestEffectX = effectX;
+                                    bestEffectY = effectY;
+
+                                    if (is8BallShot) {
+                                        aiCalledPocket = i;
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+
+            // Apply best shot
+            const finalForce = bestPower / 2.5;
+            const finalAngle = bestAngle + (Math.random() - 0.5) * (angleVariance / 3); // Thêm sai số cuối
+            
+            // Set AI's effect (chấm đen)
+            balls[0].effectX = bestEffectX;
+            balls[0].effectY = bestEffectY;
+            
+            // Apply spin to velocity
+            const effectiveAngle = finalAngle + bestEffectX * 0.05;
+            let effectiveForce = finalForce * (1 + bestEffectY * 0.1);
+            effectiveForce = Math.max(0.5, effectiveForce);
+
+            cue.vx = Math.cos(effectiveAngle) * effectiveForce;
+            cue.vy = Math.sin(effectiveAngle) * effectiveForce;
+            
+            playShoot();
+            firstContact = null; pottedThisTurn = []; foul = false; shotTaken = true; 
+            cueHitRail = false; objectBallHitRail = false; potted8BallPocket = -1; 
+        }
+
+        // Event and Mode Functions
+        function resetSpinControl() {
+            cueEffectX = 0; 
+            cueEffectY = 0;
+            spinMarker.style.left = '50%';
+            spinMarker.style.top = '50%';
+        }
+
+        function restart() {
+            initBalls();
+            gameOver = false;
+            winner = null;
+            groupsAssigned = false;
+            playerGroup = null;
+            opponentGroup = null;
+            currentPlayer = 1;
+            pottedThisTurn = [];
+            firstContact = null;
+            foul = false;
+            ballInHand = false; 
+            framesSinceStopped = 0;
+            particles = [];
+            power = 0;
+            shooting = false;
+            allStopped = true;
+            shotTaken = false; 
+            cueHitRail = false;
+            objectBallHitRail = false;
+            
+            isCallingPocket = false;
+            calledPocket = null;
+            potted8BallPocket = -1;
+            aiCalledPocket = -1;
+            ballInHandError.style.display = 'none';
+            
+            // NEW: Reset Spin
+            resetSpinControl(); 
+            balls[0].effectX = 0; 
+            balls[0].effectY = 0;
+            
+            updateTurnIndicator();
+            updateBallDisplays();
+            updateDifficultyButtons(); 
+        }
+        function setMode(mode) {
+            gameMode = mode;
+            restart();
+            
+            if (mode === '1p') {
+                btn1p.style.background = '#DEB887';
+                btn2p.style.background = '#D2B48C';
+                aiDifficultyControls.style.display = 'flex'; 
+                updateDifficultyButtons(); 
+            } else if (mode === '2p') {
+                btn1p.style.background = '#D2B48C';
+                btn2p.style.background = '#DEB887';
+                aiDifficultyControls.style.display = 'none'; 
+            } else {
+                btn1p.style.background = '#D2B48C';
+                btn2p.style.background = '#D2B48C';
+                aiDifficultyControls.style.display = 'none';
+            }
+        }
+        btn1p.onclick = () => { setMode('1p'); playClick(); };
+        btn2p.onclick = () => { setMode('2p'); playClick(); };
+        restartBtn.onclick = () => { restart(); playClick(); };
+        btnAiEasy.onclick = () => { aiDifficulty = 'easy'; updateDifficultyButtons(); playClick(); };
+        btnAiMedium.onclick = () => { aiDifficulty = 'medium'; updateDifficultyButtons(); playClick(); };
+        btnAiHard.onclick = () => { aiDifficulty = 'hard'; updateDifficultyButtons(); playClick(); };
+        
+        // NEW: Spin Control Input
+        spinControl.addEventListener('click', (e) => {
+            if (gameMode === 'menu' || !allStopped || gameOver || (gameMode === '1p' && currentPlayer === 2) || ballInHand) return;
+            const rect = spinControl.getBoundingClientRect();
+            
+            // Click position relative to the center of the spin control
+            let clickX = e.clientX - rect.left - rect.width / 2;
+            let clickY = e.clientY - rect.top - rect.height / 2;
+            
+            // Normalize to -1 to 1 range
+            let normalizedX = clickX / (rect.width / 2);
+            let normalizedY = clickY / (rect.height / 2);
+            
+            // Clamp to inside the circle (optional for visual flair)
+            const dist = Math.hypot(normalizedX, normalizedY);
+            if (dist > 1) {
+                normalizedX /= dist;
+                normalizedY /= dist;
+            }
+
+            cueEffectX = normalizedX;
+            cueEffectY = -normalizedY; // Invert Y-axis: top click is top spin (Y-coordinate is smaller)
+            
+            // Update marker position
+            spinMarker.style.left = `${(cueEffectX * 50 + 50)}%`;
+            spinMarker.style.top = `${(-cueEffectY * 50 + 50)}%`; // Invert Y back for display
+            
+            // Update cue ball property
+            balls[0].effectX = cueEffectX;
+            balls[0].effectY = cueEffectY;
+            
+            playClick(); 
+        });
+
+        // MouseMove: Cập nhật vị trí gậy/bi chủ
+        canvas.addEventListener('mousemove', (e) => {
+            if (gameMode === 'menu' || !allStopped || gameOver || isCallingPocket) return;
+            if (gameMode === '1p' && currentPlayer === 2) return; 
+            const rect = canvas.getBoundingClientRect();
+            const mx = e.clientX - rect.left;
+            const my = e.clientY - rect.top;
+            
+            if (ballInHand) {
+                const border = 25 + radius;
+                const headStringX = 275; // Vị trí vạch đầu (Head String)
+                
+                // [ĐÃ SỬA] Giới hạn đặt bi sau vạch đầu (X < 275)
+                balls[0].x = Math.max(border, Math.min(headStringX, mx));
+                balls[0].y = Math.max(border, Math.min(canvas.height - border, my));
+                balls[0].potted = false; 
+                
+                let isValidPlacement = true;
+                const cueBall = balls[0];
+                for (let i = 1; i < balls.length; i++) {
+                    const ball = balls[i];
+                    if (ball.potted) continue;
+                    if (Math.hypot(cueBall.x - ball.x, cueBall.y - ball.y) < radius * 2 + 0.5) { 
+                        isValidPlacement = false;
+                        break;
+                    }
+                }
+                ballInHandError.style.display = isValidPlacement ? 'none' : 'block';
+                
+            } else {
+                angle = Math.atan2(my - balls[0].y, mx - balls[0].x);
+                const dist = 90 + power * 0.8;
+                cueX = balls[0].x - Math.cos(angle) * dist;
+                cueY = balls[0].y - Math.sin(angle) * dist;
+            }
+        });
+
+        // MouseDown: Bắt đầu đặt bi/Bắt đầu bắn
+        canvas.addEventListener('mousedown', (e) => {
+            if (gameMode === 'menu' || !allStopped || gameOver || (gameMode === '1p' && currentPlayer === 2)) return;
+            if (audioCtx?.state === 'suspended') initAudio(); 
+
+            if (ballInHand) {
+                let isValidPlacement = true;
+                const cueBall = balls[0];
+                for (let i = 1; i < balls.length; i++) {
+                    const ball = balls[i];
+                    if (ball.potted) continue;
+                    if (Math.hypot(cueBall.x - ball.x, cueBall.y - ball.y) < radius * 2 + 0.5) { 
+                        isValidPlacement = false;
+                        break;
+                    }
+                }
+                if (isValidPlacement) {
+                    ballInHand = false;
+                    ballInHandError.style.display = 'none';
+                    updateTurnIndicator();
+                } 
+                return; 
+            }
+            shooting = true;
+            power = 0;
+        });
+
+        // MouseUp: Kết thúc bắn (Áp dụng Spin Physics)
+        canvas.addEventListener('mouseup', (e) => {
+            if (ballInHand || !shooting || gameMode === 'menu' || !allStopped || gameOver || (gameMode === '1p' && currentPlayer === 2)) {
+                shooting = false; 
+                return;
+            }
+            
+            const cueBall = balls[0];
+            for (let i = 1; i < balls.length; i++) {
+                const ball = balls[i];
+                if (ball.potted) continue;
+                if (Math.hypot(cueBall.x - ball.x, cueBall.y - ball.y) < radius * 2 + 0.5) { 
+                    foul = true; 
+                    ballInHand = true; 
+                    shooting = false;
+                    updateTurnIndicator();
+                    return; 
+                }
+            }
+            
+            const force = power / 2.2;
+            
+            // NEW: Apply spin logic to initial velocity
+            const effectiveAngle = angle + cueEffectX * 0.05; // Sidespin affects angle slightly (swerve)
+            let effectiveForce = force * (1 + cueEffectY * 0.1); // Top/Back spin affects force/momentum
+            effectiveForce = Math.max(0.5, effectiveForce); 
+
+            balls[0].vx = Math.cos(effectiveAngle) * effectiveForce;
+            balls[0].vy = Math.sin(effectiveAngle) * effectiveForce;
+            
+            playShoot();
+            shooting = false;
+            firstContact = null; pottedThisTurn = []; foul = false; shotTaken = true; 
+            cueHitRail = false; objectBallHitRail = false; potted8BallPocket = -1; 
+        });
+        document.addEventListener('keydown', (e) => {
+            if (e.key.toLowerCase() === 'r') restart();
+        });
+
+        // Main Animation Loop
+        function animate() {
+            requestAnimationFrame(animate);
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+            // --- VẼ BÀN BI-A CẢI TIẾN ---
+            ctx.save();
+            ctx.shadowColor = 'rgba(0,0,0,0.8)';
+            ctx.shadowBlur = 15;
+            ctx.shadowOffsetX = 0;
+            ctx.shadowOffsetY = 10;
+            
+            ctx.fillStyle = '#654321'; 
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+            ctx.strokeStyle = '#8B4513'; 
+            ctx.lineWidth = 35;
+            ctx.lineCap = 'round';
+            ctx.beginPath();
+            ctx.moveTo(25, 25); ctx.lineTo(canvas.width - 25, 25);
+            ctx.moveTo(25, canvas.height - 25); ctx.lineTo(canvas.width - 25, canvas.height - 25);
+            ctx.moveTo(25, 25); ctx.lineTo(25, canvas.height - 25);
+            ctx.moveTo(canvas.width - 25, 25); ctx.lineTo(canvas.width - 25, canvas.height - 25);
+            ctx.stroke();
+
+            const feltGrad = ctx.createLinearGradient(0, 0, 0, canvas.height);
+            feltGrad.addColorStop(0, '#008000'); 
+            feltGrad.addColorStop(0.5, '#006400');
+            feltGrad.addColorStop(1, '#004d00');
+            ctx.fillStyle = feltGrad;
+            ctx.shadowBlur = 0; 
+            ctx.fillRect(25, 25, canvas.width - 50, canvas.height - 50);
+            ctx.restore(); 
+            // ------------------------------------
+
+            // Pockets
+            ctx.fillStyle = '#111';
+            ctx.shadowColor = '#000';
+            ctx.shadowBlur = 20;
+            pockets.forEach(p => {
+                ctx.beginPath();
+                ctx.arc(p.x, p.y, pocketRadius, 0, Math.PI * 2);
+                ctx.fill();
+            });
+
+            // Markings
+            ctx.fillStyle = '#FFF';
+            ctx.shadowBlur = 0;
+            ctx.beginPath();
+            ctx.arc(275, canvas.height / 2, 4, 0, Math.PI * 2); // Vạch đầu (Head String)
+            ctx.arc(canvas.width - 275, canvas.height / 2, 4, 0, Math.PI * 2); // Điểm đặt bi 1 (Foot Spot)
+            ctx.fill();
+
+            // Physics steps
+            particles.forEach(p => p.update());
+            particles = particles.filter(p => p.life > 0);
+            particles.forEach(p => p.draw());
+            balls.forEach(ball => {
+                if (!ball.potted) ball.updatePosition();
+            });
+
+            // Pocket detection 
+            balls.forEach(ball => {
+                if (ball.potted) return;
+                for (let i = 0; i < pockets.length; i++) {
+                    const pocket = pockets[i];
+                    const dist = Math.hypot(ball.x - pocket.x, ball.y - pocket.y);
+                    if (dist < radius + 14) { 
+                        if (ball.group === 'cue') {
+                            ball.potted = true; 
+                        } else {
+                            ball.potted = true;
+                            ball.vx = 0;
+                            ball.vy = 0;
+                            pottedThisTurn.push(ball);
+                            playPot();
+                            for (let k = 0; k < 20; k++) {
+                                particles.push(new Particle(ball.x, ball.y));
+                            }
+                            if (ball.number === 8) {
+                                potted8BallPocket = i; 
+                            }
+                        }
+                        break; 
+                    }
+                }
+            });
+
+            // Collisions 
+            for (let i = 0; i < balls.length; i++) {
+                for (let j = i + 1; j < balls.length; j++) {
+                    const a = balls[i];
+                    const b = balls[j];
+                    if (a.potted || b.potted) continue;
+                    
+                    if (ballInHand && (a.group === 'cue' || b.group === 'cue')) {
+                        continue; 
+                    }
+                    
+                    const dx = b.x - a.x;
+                    const dy = b.y - a.y;
+                    const dist = Math.hypot(dx, dy);
+                    if (dist < a.radius + b.radius + 0.5) {
+                        const collAngle = Math.atan2(dy, dx);
+                        const sin = Math.sin(collAngle);
+                        const cos = Math.cos(collAngle);
+                        const avx = a.vx * cos + a.vy * sin;
+                        const avy = a.vy * cos - a.vx * sin;
+                        const bvx = b.vx * cos + b.vy * sin;
+                        const bvy = b.vy * cos - bvx * sin; 
+                        a.vx = bvx * cos - avy * sin;
+                        a.vy = bvx * sin + avy * cos;
+                        b.vx = avx * cos - bvy * sin;
+                        b.vy = avx * sin + bvy * cos;
+                        const overlap = (a.radius + b.radius - dist) / 2;
+                        a.x -= overlap * cos;
+                        a.y -= overlap * sin;
+                        b.x += overlap * cos;
+                        b.y += overlap * sin;
+                        playCollision();
+                        
+                        // First Contact Detection
+                        if (!firstContact && (a.group === 'cue' || b.group === 'cue')) {
+                            firstContact = a.group === 'cue' ? b : a;
+                        }
+                    }
+                }
+            }
+
+            balls.forEach(ball => {
+                if (!ball.potted) ball.clampWalls();
+            });
+
+            // Turn management
+            allStopped = true;
+            balls.forEach(ball => {
+                if (!ball.potted && (Math.abs(ball.vx) > 0.08 || Math.abs(ball.vy) > 0.08)) {
+                    allStopped = false;
+                }
+            });
+
+            if (allStopped) {
+                if (shotTaken) { 
+                    framesSinceStopped++;
+                    if (framesSinceStopped >= 30) { 
+                        
+                        const cueBall = balls[0];
+                        if (cueBall.potted) {
+                            cueBall.x = 250;
+                            cueBall.y = canvas.height / 2;
+                            cueBall.potted = false;
+                            foul = true; 
+                            ballInHand = true;
+                        }
+                        
+                        if (!groupsAssigned && pottedThisTurn.length > 0) {
+                            const firstLegalPot = pottedThisTurn.find(b => b.group !== 'black' && b.group !== 'cue');
+                            if (firstLegalPot) {
+                                groupsAssigned = true;
+                                playerGroup = firstLegalPot.group;
+                                opponentGroup = playerGroup === 'solid' ? 'stripe' : 'solid';
+                            }
+                        }
+                        
+                        const continueTurn = checkTurnContinue();
+                        
+                        if (!gameOver && (foul || !continueTurn)) { 
+                            currentPlayer = 3 - currentPlayer;
+                            // Reset cue spin for the new player
+                            balls[0].effectX = 0; 
+                            balls[0].effectY = 0;
+                            if (currentPlayer === 1) resetSpinControl();
+                        }
+                        
+                        updateTurnIndicator();
+                        updateBallDisplays();
+
+                        if (gameOver) {
+                            if (winner === 1) { p1Wins++; playWin(); } else { p2Wins++; playLose(); }
+                            updateScores();
+                            return; 
+                        }
+
+                        // Reset flags
+                        firstContact = null; pottedThisTurn = []; foul = false; framesSinceStopped = 0; shotTaken = false; 
+                        cueHitRail = false; objectBallHitRail = false; potted8BallPocket = -1;
+                    }
+                }
+            } else {
+                framesSinceStopped = 0;
+            }
+
+            // AI 
+            if (allStopped && gameMode === '1p' && currentPlayer === 2 && !gameOver && !shotTaken) {
+                
+                if (ballInHand) {
+                    aiPlaceBall(); 
+                    ballInHand = false; 
+                    updateTurnIndicator();
+                    aiCurrentTime = 0;
+                }
+                
+                aiCurrentTime++;
+                if (aiCurrentTime >= aiThinkingTime) {
+                    aiShoot();
+                    aiCurrentTime = 0;
+                }
+            }
+
+            // Draw balls 
+            balls.forEach(ball => {
+                if (!ball.potted) ball.draw();
+            });
+
+            // Player UI
+            const isHumanTurn = allStopped && !gameOver && !(gameMode === '1p' && currentPlayer === 2);
+            if (isHumanTurn) {
+                
+                if (ballInHand) {
+                    let isValidPlacement = true;
+                    const cueBall = balls[0];
+                    for (let i = 1; i < balls.length; i++) {
+                        const ball = balls[i];
+                        if (ball.potted) continue;
+                        if (Math.hypot(cueBall.x - ball.x, cueBall.y - ball.y) < radius * 2 + 0.5) { 
+                            isValidPlacement = false;
+                            break;
+                        }
+                    }
+
+                    if (!isValidPlacement) {
+                        ctx.strokeStyle = '#FF0000';
+                        ctx.lineWidth = 4;
+                        ctx.shadowColor = '#FF0000';
+                        ctx.shadowBlur = 15;
+                    } else {
+                        ctx.strokeStyle = '#00FF00';
+                        ctx.lineWidth = 2;
+                        ctx.shadowColor = '#00FF00';
+                        ctx.shadowBlur = 10;
+                    }
+                    ctx.beginPath();
+                    ctx.arc(balls[0].x, balls[0].y, radius + 5, 0, Math.PI * 2);
+                    ctx.stroke();
+                    ctx.shadowBlur = 0;
+                    
+                } else { 
+                    
+                    const aimData = getGhostBallData();
+
+                    if (aimData.hit) {
+                        const target = aimData.target;
+                        const ghostCue = aimData.ghostCue;
+                        const targetDir = aimData.targetDir;
+
+                        // Aim Line to Ghost Ball
+                        ctx.strokeStyle = 'rgba(255, 255, 255, 0.9)';
+                        ctx.lineWidth = 2;
+                        ctx.setLineDash([2, 4]);
+                        ctx.beginPath();
+                        ctx.moveTo(balls[0].x, balls[0].y);
+                        ctx.lineTo(ghostCue.x, ghostCue.y);
+                        ctx.stroke();
+
+                        // Ghost Ball
+                        ctx.fillStyle = 'rgba(255, 255, 255, 0.4)';
+                        ctx.beginPath();
+                        ctx.arc(ghostCue.x, ghostCue.y, radius, 0, Math.PI * 2);
+                        ctx.fill();
+
+                        // Target Line
+                        ctx.strokeStyle = 'rgba(255, 255, 255, 0.7)';
+                        ctx.lineWidth = 2;
+                        ctx.setLineDash([5, 10]);
+                        ctx.beginPath();
+                        ctx.moveTo(target.x, target.y);
+                        ctx.lineTo(target.x + targetDir.x * 1000, target.y + targetDir.y * 1000);
+                        ctx.stroke();
+                        ctx.setLineDash([]);
+
+                    } else {
+                        // Basic Aim Line
+                        ctx.strokeStyle = 'rgba(255,255,255,0.4)';
+                        ctx.lineWidth = 2;
+                        ctx.setLineDash([6, 12]);
+                        ctx.beginPath();
+                        ctx.moveTo(balls[0].x, balls[0].y);
+                        ctx.lineTo(balls[0].x + Math.cos(angle) * 1000, balls[0].y + Math.sin(angle) * 1000);
+                        ctx.stroke();
+                        ctx.setLineDash([]);
+                    }
+
+                    // --- VẼ GẬY BI-A CẢI TIẾN ---
+                    const tipDist = 10; 
+                    const totalDist = 90 + power * 0.8;
+                    const cueTipX = balls[0].x - Math.cos(angle) * tipDist;
+                    const cueTipY = balls[0].y - Math.sin(angle) * tipDist;
+
+                    const cueGrad = ctx.createLinearGradient(cueX, cueY, cueTipX, cueTipY);
+                    cueGrad.addColorStop(0, '#D2B48C'); 
+                    cueGrad.addColorStop(0.5, '#DEB887');
+                    cueGrad.addColorStop(1, '#A0522D'); 
+                    
+                    ctx.strokeStyle = cueGrad;
+                    ctx.lineWidth = 10; 
+                    ctx.lineCap = 'round';
+                    ctx.shadowColor = '#8B4513';
+                    ctx.shadowBlur = 10;
+                    ctx.beginPath();
+                    ctx.moveTo(cueTipX, cueTipY);
+                    ctx.lineTo(cueX, cueY);
+                    ctx.stroke();
+
+                    ctx.strokeStyle = '#FFF'; 
+                    ctx.lineWidth = 8; 
+                    ctx.shadowBlur = 0;
+                    ctx.beginPath();
+                    ctx.moveTo(balls[0].x, balls[0].y);
+                    ctx.lineTo(cueTipX, cueTipY);
+                    ctx.stroke();
+                    ctx.shadowBlur = 0; 
+                    // ------------------------------------
+
+                    // --- VẼ THANH LỰC CẢI TIẾN ---
+                    if (shooting) {
+                        const barW = 220;
+                        const barH = 30;
+                        const barX = canvas.width / 2 - barW / 2;
+                        const barY = canvas.height - 65; 
+
+                        ctx.fillStyle = 'rgba(0,0,0,0.8)';
+                        ctx.fillRect(barX, barY, barW, barH);
+                        
+                        const currentW = (power / maxPower) * (barW - 10);
+                        const grad = ctx.createLinearGradient(barX + 5, 0, barX + barW - 5, 0);
+                        grad.addColorStop(0, '#FFD700'); 
+                        grad.addColorStop(0.5, '#FF8C00'); 
+                        grad.addColorStop(1, '#DC143C'); 
+
+                        ctx.fillStyle = grad;
+                        ctx.shadowColor = '#FFD700';
+                        ctx.shadowBlur = 8;
+                        ctx.fillRect(barX + 5, barY + 5, currentW, barH - 10);
+
+                        ctx.shadowBlur = 0;
+                        ctx.fillStyle = '#FFF';
+                        ctx.font = 'bold 18px Arial';
+                        ctx.textAlign = 'center';
+                        ctx.textBaseline = 'middle';
+                        ctx.fillText(`LỰC: ${Math.round((power / maxPower) * 100)}%`, canvas.width / 2, barY + barH / 2);
+                    }
+                    // ------------------------------------
+                } 
+            }
+
+            // Charge power
+            if (shooting) {
+                power = Math.min(maxPower, power + 1.2);
+            }
+        }
+
+        initAudio();
+        initBalls();
+        updateScores();
+        updateTurnIndicator();
+        updateBallDisplays();
+        updateDifficultyButtons(); 
+        animate();
+    </script>
+</body>
+</html>
