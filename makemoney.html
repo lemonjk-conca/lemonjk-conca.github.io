@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>Make Money - Casino nâng cao</title>
+  <title>Make Money - Full Edition (Clicker + Casino + Upgrades)</title>
   <style>
     :root{
       --bg:#f6f5ff;
@@ -13,6 +13,7 @@
       --muted:#666;
       --win:#2ecc71;
       --lose:#e74c3c;
+      --danger:#c0392b;
     }
     *{box-sizing:border-box}
     body{
@@ -21,211 +22,148 @@
       background: linear-gradient(180deg,#f7f5ff,#fff0f7);
       display:flex;
       justify-content:center;
-      padding:24px;
+      padding:18px;
       color:#222;
     }
     .app{
-      width:980px;
+      width:1000px;
       max-width:98%;
       background:var(--card);
       border-radius:12px;
-      box-shadow:0 10px 30px rgba(100,80,160,0.12);
+      box-shadow:0 12px 34px rgba(100,80,160,0.08);
       padding:18px;
     }
-    header{ text-align:center; margin-bottom:12px; }
+    header{ text-align:center; margin-bottom:8px; }
     header h1{ margin:6px 0; color:var(--accent); font-size:34px; }
-    nav{ display:flex; gap:8px; justify-content:center; margin-bottom:12px; }
+    nav{ display:flex; gap:8px; justify-content:center; margin:10px 0; flex-wrap:wrap; }
     nav button{ padding:8px 12px; border-radius:6px; border:1px solid #ddd; background:#fff; cursor:pointer; }
     nav button.active{ background:var(--accent); color:#fff; border-color:var(--accent); }
 
-    .top-row{
-      display:flex;
-      gap:16px;
-      align-items:center;
-      justify-content:space-between;
-      flex-wrap:wrap;
-    }
-    .balance-card{
-      background:linear-gradient(90deg,#fff,#fffbff);
-      border-radius:10px;
-      padding:16px;
-      min-width:260px;
-      box-shadow:0 6px 14px rgba(100,80,160,0.06);
-      text-align:center;
-    }
-    .balance-card h2{ margin:0; font-size:18px; color:var(--muted); }
-    .balance{ font-size:32px; color:var(--accent-2); font-weight:700; margin-top:6px; }
+    .top-row{ display:flex; gap:16px; align-items:center; justify-content:space-between; flex-wrap:wrap; }
+    .balance-card{ background:linear-gradient(90deg,#fff,#fff9ff); border-radius:10px; padding:14px; min-width:260px; box-shadow:0 6px 14px rgba(100,80,160,0.04); text-align:center; }
+    .balance-card h2{ margin:0; font-size:16px; color:var(--muted); }
+    .balance{ font-size:28px; color:var(--accent-2); font-weight:800; margin-top:6px; }
 
-    .main-area{ margin-top:14px; min-height:320px; }
+    .main-area{ margin-top:12px; min-height:420px; padding:12px; border-radius:10px; }
 
-    /* Casino styles */
-    .casino {
-      text-align:center;
-      padding:14px;
-    }
-    .slots {
-      display:flex;
-      gap:10px;
-      justify-content:center;
-      margin:12px 0 6px;
-    }
-    .slot {
-      width:88px;
-      height:88px;
-      border:2px solid #222;
-      border-radius:8px;
-      display:flex;
-      align-items:center;
-      justify-content:center;
-      font-size:44px;
-      font-weight:800;
-      background:linear-gradient(180deg,#fff,#f2f2f2);
-      transition: all 220ms ease;
-    }
-    .slot.win { box-shadow: 0 0 18px 4px rgba(46,204,113,0.18); transform: scale(1.08); }
+    /* money clicker */
+    .money { text-align:center; padding:6px; }
+    #moneyBtn{ margin-top:8px; width:180px; height:180px; background:linear-gradient(180deg,#ff9ad0,#ff6a95); border:none; border-radius:50%; color:white; font-size:26px; font-weight:800; box-shadow:0 12px 30px rgba(255,106,149,0.22); cursor:pointer; }
+    #moneyBtn:active{ transform:translateY(2px); }
+
+    .stats{ display:flex; gap:10px; justify-content:center; margin-top:12px; color:var(--muted); flex-wrap:wrap; }
+    .small { background:#f0f0f0; border:1px solid #e0e0e0; padding:8px 10px; border-radius:8px; cursor:pointer; }
+
+    /* casino */
+    .casino { text-align:center; padding:8px; }
+    .slots { display:flex; gap:10px; justify-content:center; margin:10px 0; }
+    .slot { width:92px; height:92px; border:2px solid #222; border-radius:10px; display:flex; align-items:center; justify-content:center; font-size:44px; background:linear-gradient(180deg,#fff,#f2f2f2); transition: all 220ms ease; }
+    .slot.win { box-shadow: 0 0 22px 6px rgba(46,204,113,0.16); transform: scale(1.08); }
     .slot.lose { box-shadow: 0 0 18px 4px rgba(231,76,60,0.12); transform: scale(0.98); }
-
-    @keyframes shake {
-      10% { transform: translateX(-6px); }
-      30% { transform: translateX(6px); }
-      50% { transform: translateX(-4px); }
-      70% { transform: translateX(4px); }
-      90% { transform: translateX(-2px); }
-      100% { transform: translateX(0); }
-    }
     .slots.shake { animation: shake 650ms ease; }
+    @keyframes shake { 10%{ transform:translateX(-6px); } 30%{transform:translateX(6px);} 50%{transform:translateX(-4px);} 70%{transform:translateX(4px);} 90%{transform:translateX(-2px);} 100%{transform:translateX(0);} }
 
-    .casino-controls{
-      display:flex;
-      gap:8px;
-      justify-content:center;
-      margin-top:10px;
-      flex-wrap:wrap;
-    }
-    .casino-controls input[type="number"]{
-      width:140px;
-      padding:8px;
-      border-radius:6px;
-      border:1px solid #ccc;
-      text-align:center;
-      font-size:16px;
-    }
-    .casino-controls button{
-      padding:10px 12px;
-      border-radius:6px;
-      border:none;
-      background:var(--accent);
-      color:white;
-      cursor:pointer;
-      font-weight:700;
-    }
-    .casino-info{ color:var(--muted); margin-top:8px; font-size:14px; }
+    .casino-controls{ display:flex; gap:8px; justify-content:center; margin-top:10px; flex-wrap:wrap; }
+    input[type="number"]{ width:140px; padding:8px; border-radius:6px; border:1px solid #ccc; text-align:center; font-size:16px; }
 
-    /* Money tab (original clicker) */
-    .money {
-      text-align:center;
-      padding:18px;
-    }
-    #moneyBtn{
-      margin-top:8px;
-      width:220px;
-      height:220px;
-      background:linear-gradient(180deg,#ff9ad0,#ff6a95);
-      border:none;
-      border-radius:50%;
-      color:white;
-      font-size:28px;
-      font-weight:800;
-      box-shadow:0 12px 30px rgba(255,106,149,0.25);
-      cursor:pointer;
-    }
-    #moneyBtn:active{ transform:translateY(3px); }
+    /* shop */
+    .shop-grid{ display:grid; grid-template-columns:repeat(2,1fr); gap:12px; margin-top:8px; }
+    .item{ border-radius:10px; padding:12px; background:linear-gradient(180deg,#fff,#fff6fb); border:1px solid rgba(100,80,160,0.06); }
+    .item button{ background:var(--accent); color:white; border:none; padding:8px 10px; border-radius:8px; cursor:pointer; font-weight:700; }
 
-    .stats{
-      display:flex;
-      gap:8px;
-      justify-content:center;
-      margin-top:10px;
-      color:var(--muted);
-    }
+    .ability{ margin-top:12px; display:flex; gap:8px; justify-content:center; align-items:center; flex-wrap:wrap; }
 
-    .shop{
-      margin-top:18px;
-      display:grid;
-      grid-template-columns:repeat(2,1fr);
-      gap:12px;
-    }
-    .item{
-      border-radius:10px;
-      padding:12px;
-      background:linear-gradient(180deg,#fff,#fff6fb);
-      border:1px solid rgba(100,80,160,0.06);
-    }
+    footer{ margin-top:14px; text-align:center; color:var(--muted); font-size:13px; }
 
-    .controls{ margin-top:12px; display:flex; gap:8px; flex-wrap:wrap; justify-content:center; }
-
-    .modal{
-      position:fixed; inset:0; display:none; align-items:center; justify-content:center;
-      background:rgba(0,0,0,0.4);
-    }
-    .modal.show{ display:flex; }
-    .modal .box{ background:white; padding:18px; border-radius:12px; width:420px; max-width:95%; }
-    @media (max-width:760px){
+    @media (max-width:820px){
       .top-row{ flex-direction:column; }
-      .shop{ grid-template-columns:1fr; }
-      #moneyBtn{ width:180px; height:180px; }
+      .slots{ gap:6px; }
       .slot{ width:72px; height:72px; font-size:34px; }
+      #moneyBtn{ width:150px; height:150px; }
+      .shop-grid{ grid-template-columns:1fr; }
     }
   </style>
 </head>
 <body>
-  <div class="app" role="application" aria-label="Make Money Game with Casino">
+  <div class="app" role="application" aria-label="Make Money Full Game">
     <header>
-      <h1>Make Money</h1>
-      <div style="color:var(--muted)">Bấm để kiếm tiền, mua nâng cấp, hoặc thử vận may ở Casino</div>
+      <h1>Make Money — Full Edition</h1>
+      <div style="color:var(--muted)">Clicker + Shop + Casino (emoji slots) + Sound + Abilities + Persistence</div>
     </header>
 
     <nav>
       <button id="tabMoney" class="active">Money</button>
+      <button id="tabIncome">Income</button>
+      <button id="tabUpgrades">Upgrades</button>
       <button id="tabCasino">Casino</button>
-      <button id="tabShop">Shop</button>
+      <button id="tabHelp">Help</button>
     </nav>
 
     <div class="top-row">
       <div class="balance-card" aria-live="polite">
-        <h2>Số dư của bạn</h2>
+        <h2>Số dư</h2>
         <div class="balance" id="balance">0 ₫</div>
-        <div style="margin-top:8px; font-size:13px; color:var(--muted)" id="perClick">Mỗi click: 1 ₫</div>
+        <div style="margin-top:6px; font-size:13px; color:var(--muted)" id="perClick">Click: 1 ₫</div>
       </div>
 
-      <div style="flex:1; min-width:260px; text-align:center;">
+      <div style="flex:1; min-width:280px; text-align:center;">
         <div style="font-size:13px; color:var(--muted)">Tổng kiếm được: <span id="totalEarned">0</span></div>
-        <div style="margin-top:8px" class="controls">
+        <div style="margin-top:8px" class="ability">
           <button id="saveBtn" class="small">Lưu</button>
           <button id="resetBtn" class="small">Reset</button>
+          <button id="exportBtn" class="small">Export Save</button>
+          <button id="importBtn" class="small">Import Save</button>
         </div>
       </div>
     </div>
 
     <div class="main-area">
-      <!-- Money tab -->
-      <section id="moneyTab" class="money">
-        <div style="font-size:18px; color:var(--muted)">Income: <span id="incomeLabel">$1</span></div>
-        <div style="margin-top:8px; font-size:22px; font-weight:700">Money:</div>
+      <!-- MONEY -->
+      <section id="moneyTab" style="display:block" class="money">
+        <div style="font-size:15px; color:var(--muted)">Income hiện tại: <span id="incomeLabel">$1</span></div>
+        <div style="margin-top:6px; font-size:18px; font-weight:700">Money:</div>
         <div style="font-size:40px; font-weight:800; margin-top:6px" id="bigMoney">$0</div>
         <p id="brokeText" style="color:var(--muted); font-style:italic; margin-top:8px">You are broke!</p>
 
-        <button id="moneyBtn" title="Click để kiếm tiền">Earn</button>
+        <button id="moneyBtn">Earn</button>
 
         <div class="stats">
           <div>Auto: <span id="autoRate">0</span>/s</div>
-          <div>Bonus Clicks: <span id="bonusClicks">0</span> (+ <span id="bonusPerClick">0</span>/click)</div>
+          <div>Bonus Clicks: <span id="bonusClicks">0</span></div>
+          <div>BigBet: <span id="bigBetLabel">OFF</span></div>
         </div>
       </section>
 
-      <!-- Casino tab -->
-      <section id="casinoTab" class="casino" style="display:none;">
-        <h2>Casino</h2>
+      <!-- INCOME DETAILS -->
+      <section id="incomeTab" style="display:none; padding:8px;">
+        <h3>Income</h3>
+        <p>Per-click: <strong id="infoPerClick">1</strong> ₫</p>
+        <p>Auto per second: <strong id="infoAuto">0</strong> ₫/s</p>
+        <p>Total earned: <strong id="infoTotal">0</strong></p>
+      </section>
+
+      <!-- UPGRADES -->
+      <section id="upgradesTab" style="display:none; padding:8px;">
+        <h3>Upgrades</h3>
+        <div class="shop-grid" id="shopGrid"></div>
+        <div style="margin-top:12px;">
+          <h4>Abilities</h4>
+          <div class="ability">
+            <div>
+              <button id="activateBigBet" class="small">Kích hoạt Big Bet</button>
+              <div style="font-size:13px; color:var(--muted)">Big Bet: tạm thời x2 payout, thời gian 20s, cooldown 60s, phí 200</div>
+            </div>
+            <div>
+              <button id="purchaseMega" class="small">Mua Mega Jackpot (1 level)</button>
+              <div style="font-size:13px; color:var(--muted)">Mega Jackpot: tăng multiplier triple and special 7 payout</div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- CASINO -->
+      <section id="casinoTab" style="display:none" class="casino">
+        <h3>Casino - Slots</h3>
         <div style="margin-top:6px; font-weight:700">Money: <span id="casinoMoney">$0</span></div>
 
         <div class="slots" id="slotsContainer" aria-hidden="false">
@@ -236,237 +174,339 @@
 
         <div class="casino-controls">
           <input id="betInput" type="number" min="1" placeholder="Nhập tiền cược" />
-          <button id="maxBetBtn" title="Đặt tối đa">Max</button>
-          <button id="gambleBtn">GAMBLE</button>
+          <button id="maxBetBtn" class="small">Max</button>
+          <button id="gambleBtn" class="small">GAMBLE</button>
         </div>
 
-        <div class="casino-info" id="casinoInfo">MORE INFO ON CASINO</div>
+        <div class="casino-info" id="casinoInfo" style="margin-top:8px; color:var(--muted)">Quy tắc: 3 giống -> lớn, 2 giống -> nhỏ. Có thể mua boosts trong cửa hàng.</div>
 
-        <div style="margin-top:12px;">
-          <button id="casinoBack">Back</button>
+        <div style="margin-top:10px;">
+          <button id="casinoBack" class="small">Back</button>
         </div>
       </section>
 
-      <!-- Shop tab (upgrades) -->
-      <section id="shopTab" class="shop" style="display:none;">
-        <h3 style="color:var(--accent); margin-top:0">Cửa hàng - Mua nâng cấp</h3>
-        <div id="shopItems" style="display:grid; grid-template-columns:repeat(2,1fr); gap:12px"></div>
+      <!-- HELP -->
+      <section id="helpTab" style="display:none; padding:8px;">
+        <h3>Help</h3>
+        <ul>
+          <li>Bấm Earn để kiếm tiền (per click tăng khi mua Click Power).</li>
+          <li>Auto Worker kiếm tiền mỗi giây.</li>
+          <li>Shop có: Click Power, Auto Worker, Casino Boost (tăng payout), Mega Jackpot (tăng payout mạnh, 7 special), v.v.</li>
+          <li>Casino: đặt cược, nhấn GAMBLE. Bet sẽ bị trừ trước, thắng được trả theo multiplier.</li>
+          <li>Big Bet: kích hoạt tạm thời tăng payout (cần phí), có cooldown.</li>
+          <li>Dữ liệu lưu localStorage; dùng Export/Import để sao lưu.</li>
+        </ul>
       </section>
     </div>
 
-    <div style="text-align:center; margin-top:12px; color:var(--muted); font-size:13px">
-      Dữ liệu lưu cục bộ trong trình duyệt. Muốn export hoặc biến thành tiện ích Chrome nói mình biết.
-    </div>
+    <footer>Full demo cho lớp 12 — bao gồm âm thanh, animation, lưu trữ. Bạn có thể chỉnh số trong phần "chỉnh payout" trong mã.</footer>
   </div>
 
   <script>
-    // ==== Settings & State ====
-    const stateKey = "mmg_state_v3_casino";
+    /* =============================
+       MAKE MONEY - FULL IMPLEMENTATION
+       Features included:
+       - Clicker (per click, auto per sec)
+       - Shop with upgrades: clickPower, autoWorker, casinoBoost, megaJackpot
+       - Abilities: Big Bet (active ability), Purchase Mega Jackpot levels
+       - Casino: emoji slots, weighted symbols, payout multipliers, special triple 7
+       - Sound effects (WebAudio)
+       - Visual win/lose effects
+       - Persistence (localStorage) + Export/Import
+    ================================ */
+
+    // ===== Settings: chỉnh payout / behavior ở đây =====
+    const SAVE_KEY = "mmg_full_save_v1";
     const SYMBOLS = ['🍒','🍋','⭐','🔔','🍇','7️⃣'];
-    const TRIPLE_BASE = 5;      // giảm jackpot multiplier từ 10 -> 5
-    const PAIR_BASE = 1.5;      // giảm pair multiplier
-    const MAX_BET_GLOBAL = 50000; // giới hạn cược tối đa (cố định)
+    // Base multipliers
+    const BASE_TRIPLE = 12;  // base triple multiplier
+    const BASE_PAIR = 3;     // base pair multiplier
+    const MAX_BET_GLOBAL = 100000; // giới hạn cược tối đa
+    // Big Bet ability config
+    const BIG_BET_COST = 200;
+    const BIG_BET_MULT = 2;    // x2 payouts
+    const BIG_BET_DUR = 20;    // seconds
+    const BIG_BET_CD = 60;     // cooldown seconds
+    // Mega Jackpot config (can be purchased per level via shop)
+    const MEGA_7_BONUS = 3;    // triple 7 multiplies base triple by this factor
+
+    // ===== Game state =====
     let state = {
-      balance: 0,
+      balance: 500, // give player some starting money for testing
       perClick: 1,
       autoPerSec: 0,
       totalEarned: 0,
-      upgrades: { clickPower:0, autoWorker:0, casinoBoost:0 }
+      upgrades: {
+        clickPower: 0,
+        autoWorker: 0,
+        casinoBoost: 0,
+        megaJackpot: 0
+      },
+      bigBet: {
+        active: false,
+        cooldownUntil: 0,
+        activeUntil: 0
+      }
     };
 
-    const upgrades = [
-      { id: "clickPower", name: "Tăng lực click", basePrice: 20, priceMul:1.8,
-        effect: (lvl)=>1 + lvl*1 },
-      { id: "autoWorker", name: "Auto Worker", basePrice:50, priceMul:2.2,
-        effect: (lvl)=> lvl*2 },
-      { id: "casinoBoost", name: "Casino Boost", basePrice:200, priceMul:2.5,
-        effect: (lvl)=> lvl } // mỗi level tăng multiplier effect cho payout
+    // Shop definitions
+    const SHOP = [
+      { id: 'clickPower', name: 'Click Power', basePrice: 25, priceMul: 1.8, desc: '+1 per click each level' },
+      { id: 'autoWorker', name: 'Auto Worker', basePrice: 50, priceMul: 2.2, desc: '+2 per second each level' },
+      { id: 'casinoBoost', name: 'Casino Boost', basePrice: 200, priceMul: 2.5, desc: 'increase casino payout slightly' },
+      { id: 'megaJackpot', name: 'Mega Jackpot', basePrice: 1000, priceMul: 3.0, desc: 'increases triple payout and special 7 reward' }
     ];
 
-    function saveState(){ localStorage.setItem(stateKey, JSON.stringify(state)); }
-    function loadState(){
-      try{
-        const s = JSON.parse(localStorage.getItem(stateKey));
-        if(s) state = Object.assign(state, s);
-      }catch(e){}
+    // ===== Persistence =====
+    function save() { localStorage.setItem(SAVE_KEY, JSON.stringify(state)); }
+    function load(){
+      try {
+        const s = JSON.parse(localStorage.getItem(SAVE_KEY));
+        if (s) state = Object.assign(state, s);
+      } catch(e){}
     }
 
-    // ==== Audio (WebAudio beeps & effects) ====
+    load(); // load on start
+
+    // ensure derived values
+    function applyUpgradesToStats(){
+      state.perClick = 1 + (state.upgrades.clickPower || 0) * 1;
+      state.autoPerSec = (state.upgrades.autoWorker || 0) * 2;
+    }
+    applyUpgradesToStats();
+
+    // ===== Audio =====
     const AudioCtx = (window.AudioContext || window.webkitAudioContext);
     const audioCtx = AudioCtx ? new AudioCtx() : null;
-    function playBeep(freq=440, duration=120, type='sine', gain=0.06){
+    function beep(freq=440, time=80, type='sine', vol=0.06){
       if(!audioCtx) return;
       const o = audioCtx.createOscillator();
       const g = audioCtx.createGain();
-      o.type = type;
-      o.frequency.value = freq;
-      g.gain.value = gain;
+      o.type = type; o.frequency.value = freq;
+      g.gain.value = vol;
       o.connect(g); g.connect(audioCtx.destination);
       o.start();
-      setTimeout(()=>{ o.stop(); }, duration);
+      setTimeout(()=> o.stop(), time);
     }
-    function playWinSound(){
-      if(!audioCtx) return;
-      playBeep(880, 90, 'sine', 0.07);
-      setTimeout(()=> playBeep(1100, 140, 'sine', 0.08), 110);
-      setTimeout(()=> playBeep(880, 200, 'sine', 0.06), 280);
+    function soundTick(){ beep(700,50,'square',0.03); }
+    function soundWin(){ beep(880,90,'sine',0.07); setTimeout(()=>beep(1100,120,'sine',0.08),110); }
+    function soundLose(){ beep(200,200,'sawtooth',0.09); }
+
+    // ===== UI refs =====
+    const elems = {
+      balance: document.getElementById('balance'),
+      perClick: document.getElementById('perClick'),
+      incomeLabel: document.getElementById('incomeLabel'),
+      totalEarned: document.getElementById('totalEarned'),
+      autoRate: document.getElementById('autoRate'),
+      bigMoney: document.getElementById('bigMoney'),
+      moneyBtn: document.getElementById('moneyBtn'),
+      saveBtn: document.getElementById('saveBtn'),
+      resetBtn: document.getElementById('resetBtn'),
+      exportBtn: document.getElementById('exportBtn'),
+      importBtn: document.getElementById('importBtn'),
+      shopGrid: document.getElementById('shopGrid'),
+      casinoMoney: document.getElementById('casinoMoney'),
+      casinoInfo: document.getElementById('casinoInfo'),
+      slotsContainer: document.getElementById('slotsContainer'),
+      slotEls: [document.getElementById('slot1'), document.getElementById('slot2'), document.getElementById('slot3')],
+      betInput: document.getElementById('betInput'),
+      gambleBtn: document.getElementById('gambleBtn'),
+      maxBetBtn: document.getElementById('maxBetBtn'),
+      activateBigBet: document.getElementById('activateBigBet'),
+      purchaseMega: document.getElementById('purchaseMega'),
+      bigBetLabel: document.getElementById('bigBetLabel'),
+      infoPerClick: document.getElementById('infoPerClick'),
+      infoAuto: document.getElementById('infoAuto'),
+      infoTotal: document.getElementById('infoTotal'),
+      tabs: {
+        money: document.getElementById('tabMoney'),
+        income: document.getElementById('tabIncome'),
+        upgrades: document.getElementById('tabUpgrades'),
+        casino: document.getElementById('tabCasino'),
+        help: document.getElementById('tabHelp')
+      },
+      panes: {
+        money: document.getElementById('moneyTab'),
+        income: document.getElementById('incomeTab'),
+        upgrades: document.getElementById('upgradesTab'),
+        casino: document.getElementById('casinoTab'),
+        help: document.getElementById('helpTab')
+      }
+    };
+
+    // ===== Helpers =====
+    function fmt(n){
+      if(n >= 1e9) return (n/1e9).toFixed(2) + "B";
+      if(n >= 1e6) return (n/1e6).toFixed(2) + "M";
+      if(n >= 1e3) return (n/1e3).toFixed(1) + "k";
+      return n.toLocaleString();
     }
-    function playLoseSound(){
-      playBeep(180, 220, 'sawtooth', 0.09);
-      setTimeout(()=> playBeep(120, 160, 'sine', 0.06), 200);
-    }
-    function playTick(){
-      playBeep(660, 40, 'square', 0.04);
+
+    function getUpgradePrice(item){
+      const lvl = state.upgrades[item.id] || 0;
+      return Math.floor(item.basePrice * Math.pow(item.priceMul, lvl));
     }
 
-    // ==== Utils ====
-    function fmtCurrency(n){
-      if (n >= 1e9) return (n/1e9).toFixed(2) + "B";
-      if (n >= 1e6) return (n/1e6).toFixed(2) + "M";
-      if (n >= 1e3) return (n/1e3).toFixed(1) + "k";
-      return n.toLocaleString("en-US");
+    // calculate casino multipliers
+    function getTripleMultiplier(){
+      const boost = state.upgrades.casinoBoost || 0;
+      const mega = state.upgrades.megaJackpot || 0;
+      return BASE_TRIPLE + (boost * 2) + (mega * 5);
+    }
+    function getPairMultiplier(){
+      const boost = state.upgrades.casinoBoost || 0;
+      return BASE_PAIR + (boost * 0.5);
     }
 
-    // ==== UI refs ====
-    const balanceEl = document.getElementById("balance");
-    const bigMoneyEl = document.getElementById("bigMoney");
-    const perClickEl = document.getElementById("perClick");
-    const incomeLabel = document.getElementById("incomeLabel");
-    const totalEarnedEl = document.getElementById("totalEarned");
-    const autoRateEl = document.getElementById("autoRate");
-    const casinoMoneyEl = document.getElementById("casinoMoney");
-    const casinoInfo = document.getElementById("casinoInfo");
-    const bonusClicksEl = document.getElementById("bonusClicks");
-    const bonusPerClickEl = document.getElementById("bonusPerClick");
+    // weighted symbol generation (mega jackpot increases chance of rare '7')
+    function buildSymbolWeights(){
+      // base weights: common items higher, 7 rare
+      const base = [18,16,12,8,6,4]; // corresponding to SYMBOLS
+      const mega = state.upgrades.megaJackpot || 0;
+      if(mega > 0){
+        // increase chance of 7 slightly per mega level
+        base[5] += mega * 2;
+        // normalize by slightly reducing others
+        for(let i=0;i<5;i++) base[i] = Math.max(5, base[i] - Math.floor(mega*0.4));
+      }
+      return base;
+    }
+    function weightedPick(weights){
+      const sum = weights.reduce((a,b)=>a+b,0);
+      let r = Math.floor(Math.random() * sum);
+      for(let i=0;i<weights.length;i++){
+        if(r < weights[i]) return i;
+        r -= weights[i];
+      }
+      return weights.length-1;
+    }
 
-    const slotEls = [document.getElementById("slot1"), document.getElementById("slot2"), document.getElementById("slot3")];
-    const betInput = document.getElementById("betInput");
-    const gambleBtn = document.getElementById("gambleBtn");
-    const maxBetBtn = document.getElementById("maxBetBtn");
-    const slotsContainer = document.getElementById("slotsContainer");
+    // ===== Render =====
+    function render(){
+      applyUpgradesToStats();
+      elems.balance.textContent = fmt(state.balance) + " ₫";
+      elems.perClick.textContent = "Click: " + fmt(state.perClick) + " ₫";
+      elems.incomeLabel.textContent = "$" + fmt(state.perClick);
+      elems.totalEarned.textContent = fmt(state.totalEarned);
+      elems.autoRate.textContent = state.autoPerSec;
+      elems.bigMoney.textContent = "$" + fmt(state.balance);
+      elems.casinoMoney.textContent = "$" + fmt(state.balance);
+      elems.infoPerClick.textContent = fmt(state.perClick);
+      elems.infoAuto.textContent = fmt(state.autoPerSec);
+      elems.infoTotal.textContent = fmt(state.totalEarned);
 
-    const shopItemsEl = document.getElementById("shopItems");
-    const tabMoney = document.getElementById("tabMoney");
-    const tabCasino = document.getElementById("tabCasino");
-    const tabShop = document.getElementById("tabShop");
-    const moneyTab = document.getElementById("moneyTab");
-    const casinoTab = document.getElementById("casinoTab");
-    const shopTab = document.getElementById("shopTab");
-    const casinoBack = document.getElementById("casinoBack");
-    const moneyBtn = document.getElementById("moneyBtn");
-    const saveBtn = document.getElementById("saveBtn");
-    const resetBtn = document.getElementById("resetBtn");
-
-    // ==== Init ====
-    loadState();
-    state.perClick = upgrades.find(u=>u.id==="clickPower").effect(state.upgrades.clickPower || 0);
-    state.autoPerSec = upgrades.find(u=>u.id==="autoWorker").effect(state.upgrades.autoWorker || 0);
-
-    // ==== Render ====
-    function renderAll(){
-      balanceEl.textContent = fmtCurrency(state.balance) + " ₫";
-      bigMoneyEl.textContent = "$" + fmtCurrency(state.balance);
-      casinoMoneyEl.textContent = "$" + fmtCurrency(state.balance);
-      perClickEl.textContent = "Mỗi click: " + fmtCurrency(state.perClick) + " ₫";
-      incomeLabel.textContent = "$" + fmtCurrency(state.perClick);
-      totalEarnedEl.textContent = fmtCurrency(state.totalEarned);
-      autoRateEl.textContent = state.autoPerSec;
-      bonusClicksEl.textContent = (state.bonusClicks||0);
-      bonusPerClickEl.textContent = (state.bonusPerClick||0);
-
-      // shop
-      shopItemsEl.innerHTML = "";
-      upgrades.forEach(u=>{
-        const lvl = state.upgrades[u.id] || 0;
-        const price = Math.floor(u.basePrice * Math.pow(u.priceMul, lvl));
-        const div = document.createElement("div");
-        div.className = "item";
-        div.innerHTML = `<h4>${u.name} (Lv ${lvl})</h4>
-          <p style="color:${'var(--muted)'}; margin:6px 0">${u.id==='casinoBoost' ? 'Tăng lợi khi đánh Casino' : ''}</p>
-          <div style="display:flex; justify-content:space-between; align-items:center">
-            <div style="color:var(--muted); font-size:14px">Giá: ${fmtCurrency(price)}</div>
-            <button data-id="${u.id}" ${state.balance<price ? 'disabled':''}>Mua</button>
+      // shop UI
+      elems.shopGrid.innerHTML = '';
+      SHOP.forEach(item=>{
+        const lvl = state.upgrades[item.id] || 0;
+        const price = getUpgradePrice(item);
+        const div = document.createElement('div');
+        div.className = 'item';
+        div.innerHTML = `<h4>${item.name} (Lv ${lvl})</h4>
+          <div style="color:var(--muted); font-size:13px">${item.desc}</div>
+          <div style="display:flex; justify-content:space-between; align-items:center; margin-top:8px">
+            <div style="color:var(--muted); font-size:14px">Giá: ${fmt(price)} ₫</div>
+            <button ${state.balance < price ? 'disabled' : ''} data-id="${item.id}">Mua</button>
           </div>`;
-        shopItemsEl.appendChild(div);
-        div.querySelector("button").addEventListener("click", ()=> buyUpgrade(u.id));
+        elems.shopGrid.appendChild(div);
+        div.querySelector('button').addEventListener('click', ()=> buyUpgrade(item.id));
       });
 
-      updateCasinoInfo();
+      // BigBet label
+      const now = Date.now();
+      if(state.bigBet.active && state.bigBet.activeUntil > now){
+        elems.bigBetLabel.textContent = `ON (${Math.ceil((state.bigBet.activeUntil - now)/1000)}s)`;
+      } else {
+        elems.bigBetLabel.textContent = 'OFF';
+      }
+
+      // update casino info
+      elems.casinoInfo.textContent = `Rules: 3 giống -> x${getTripleMultiplier().toFixed(1)} (triple7 special), 2 giống -> x${getPairMultiplier().toFixed(2)}. Max bet: ${fmt(MAX_BET_GLOBAL)}. Mega level: ${state.upgrades.megaJackpot || 0}`;
     }
 
-    function buyUpgrade(id){
-      const u = upgrades.find(x=>x.id===id);
-      const lvl = state.upgrades[id] || 0;
-      const price = Math.floor(u.basePrice * Math.pow(u.priceMul, lvl));
-      if(state.balance >= price){
-        state.balance -= price;
-        state.upgrades[id] = lvl + 1;
-        state.perClick = upgrades.find(i=>i.id==="clickPower").effect(state.upgrades.clickPower || 0);
-        state.autoPerSec = upgrades.find(i=>i.id==="autoWorker").effect(state.upgrades.autoWorker || 0);
-        saveState(); renderAll();
-      } else { alert("Không đủ tiền!"); }
-    }
+    render();
 
-    // Auto earn
+    // ===== Actions: clicker, auto earn =====
+    elems.moneyBtn.addEventListener('click', ()=>{
+      state.balance += state.perClick;
+      state.totalEarned += state.perClick;
+      playClickSound();
+      render();
+    });
+
+    function playClickSound(){ if(audioCtx) beep(750,60,'sine',0.04); }
+
     setInterval(()=>{
       if(state.autoPerSec > 0){
         state.balance += state.autoPerSec;
         state.totalEarned += state.autoPerSec;
-        renderAll();
+        render();
       }
     }, 1000);
 
-    // Money click
-    moneyBtn.addEventListener("click", ()=>{
-      state.balance += state.perClick;
-      state.totalEarned += state.perClick;
-      playBeep(720, 70, 'sine', 0.04);
-      renderAll();
-    });
-
-    // Save / Reset
-    saveBtn.addEventListener("click", ()=>{ saveState(); alert("Đã lưu!"); });
-    resetBtn.addEventListener("click", ()=>{
-      if(confirm("Reset game về trạng thái ban đầu?")){
-        localStorage.removeItem(stateKey);
-        state = { balance:0, perClick:1, autoPerSec:0, totalEarned:0, upgrades:{clickPower:0,autoWorker:0, casinoBoost:0} };
-        renderAll();
-      }
-    });
-
-    // ==== Casino logic & UI ====
-    let spinning = false;
-    function getCasinoBoost(){ return state.upgrades.casinoBoost || 0; }
-    function updateCasinoInfo(){
-      const boost = getCasinoBoost();
-      casinoInfo.textContent = `Rules: 3 giống -> x(${TRIPLE_BASE} + boost*0.5), 2 giống -> x(${PAIR_BASE.toFixed(2)} + boost/10). Max bet: ${fmtCurrency(MAX_BET_GLOBAL)} (hoặc số dư). Boost: ${boost}`;
+    // ===== Shop & Upgrades =====
+    function buyUpgrade(id){
+      const item = SHOP.find(s=>s.id===id);
+      const price = getUpgradePrice(item);
+      if(state.balance < price) return alert('Không đủ tiền!');
+      state.balance -= price;
+      state.upgrades[id] = (state.upgrades[id]||0) + 1;
+      // apply immediate effects
+      applyUpgradesToStats();
+      save(); render();
     }
 
-    function randInt(max){ return Math.floor(Math.random()*max); }
+    // Big Bet ability
+    elems.activateBigBet.addEventListener('click', ()=>{
+      const now = Date.now();
+      if(state.bigBet.active && state.bigBet.activeUntil > now) return alert('Big Bet đang hoạt động!');
+      if(state.bigBet.cooldownUntil && state.bigBet.cooldownUntil > now) return alert(`Big Bet đang cooldown ${Math.ceil((state.bigBet.cooldownUntil-now)/1000)}s`);
+      if(state.balance < BIG_BET_COST) return alert('Không đủ tiền kích hoạt Big Bet!');
+      // pay cost, activate
+      state.balance -= BIG_BET_COST;
+      state.bigBet.active = true;
+      state.bigBet.activeUntil = Date.now() + BIG_BET_DUR*1000;
+      state.bigBet.cooldownUntil = Date.now() + (BIG_BET_DUR + BIG_BET_CD)*1000;
+      save(); render();
+      // schedule deactivate
+      setTimeout(()=> { state.bigBet.active = false; save(); render(); }, BIG_BET_DUR*1000);
+    });
 
-    function animateSlots(finalIdxs, duration=900){
-      // tick animation + slot changes; also plays tick sound
+    // Purchase Mega directly (small shortcut)
+    elems.purchaseMega.addEventListener('click', ()=>{
+      const item = SHOP.find(s=>s.id==='megaJackpot');
+      const price = getUpgradePrice(item);
+      if(state.balance < price) return alert('Không đủ tiền mua Mega Jackpot!');
+      state.balance -= price;
+      state.upgrades.megaJackpot = (state.upgrades.megaJackpot||0) + 1;
+      save(); render();
+    });
+
+    // ===== Casino: weighted slots, payouts, animations =====
+    let spinning = false;
+    function animateSlots(finalIdxs, duration=1000){
       const interval = 60;
       const steps = Math.floor(duration/interval);
       let step = 0;
-      slotsContainer.classList.remove('shake');
-      slotEls.forEach(el=> el.classList.remove('win','lose'));
+      elems.slotsContainer.classList.remove('shake');
+      elems.slotEls.forEach(el=> el.classList.remove('win','lose'));
       const timers = [];
-      slotEls.forEach((el, idx)=>{
+      elems.slotEls.forEach((el, idx)=>{
         const stopAt = Math.floor(steps * (0.6 + idx*0.18));
         const t = setInterval(()=>{
-          const sym = SYMBOLS[randInt(SYMBOLS.length)];
+          const sym = SYMBOLS[Math.floor(Math.random()*SYMBOLS.length)];
           el.textContent = sym;
-          playTick();
+          if(audioCtx) soundTick();
         }, interval);
         timers.push({timer:t, stopAt, idx});
       });
       const master = setInterval(()=>{
         step++;
-        timers.forEach((obj)=>{
+        timers.forEach(obj=>{
           if(step >= obj.stopAt){
             clearInterval(obj.timer);
-            slotEls[obj.idx].textContent = SYMBOLS[ finalIdxs[obj.idx] ];
+            elems.slotEls[obj.idx].textContent = SYMBOLS[finalIdxs[obj.idx]];
           }
         });
         if(step > steps + 1){
@@ -476,84 +516,142 @@
       }, interval);
     }
 
-    gambleBtn.addEventListener("click", ()=> {
+    elems.gambleBtn.addEventListener('click', ()=> doGamble());
+    function doGamble(){
       if(spinning) return;
-      let bet = Math.floor(Number(betInput.value) || 0);
-      if(!bet || bet <= 0){ alert("Nhập tiền cược hợp lệ (số nguyên >= 1)."); return; }
-      if(bet > state.balance){ alert("Không đủ tiền để cược."); return; }
+      let bet = Math.floor(Number(elems.betInput.value) || 0);
+      if(!bet || bet <= 0) { alert('Nhập bet >=1'); return; }
+      if(bet > state.balance) { alert('Không đủ tiền cược'); return; }
       const maxAllowed = Math.min(MAX_BET_GLOBAL, Math.floor(state.balance));
-      if(bet > maxAllowed){ alert("Cược vượt giới hạn tối đa: " + fmtCurrency(maxAllowed)); return; }
+      if(bet > maxAllowed) { alert('Bet vượt giới hạn: ' + fmt(maxAllowed)); return; }
 
-      // deduct bet
+      // deduct bet immediately
       state.balance -= bet;
-      renderAll();
+      render();
 
-      // outcome
-      const a = randInt(SYMBOLS.length), b = randInt(SYMBOLS.length), c = randInt(SYMBOLS.length);
+      // pick symbols with weights
+      const weights = buildSymbolWeights();
+      const a = weightedPick(weights);
+      const b = weightedPick(weights);
+      const c = weightedPick(weights);
+
       spinning = true;
-      gambleBtn.disabled = true;
-      animateSlots([a,b,c], 1100);
+      elems.gambleBtn.disabled = true;
+      animateSlots([a,b,c], 1200);
 
-      // settle after animation
       setTimeout(()=>{
-        const boost = getCasinoBoost();
-        let payout = 0;
         const symA = SYMBOLS[a], symB = SYMBOLS[b], symC = SYMBOLS[c];
+        let payout = 0;
+        // compute multipliers (consider BigBet active)
+        let tripleMult = getTripleMultiplier();
+        let pairMult = getPairMultiplier();
+        if(state.bigBet.active && state.bigBet.activeUntil > Date.now()){
+          tripleMult *= BIG_BET_MULT;
+          pairMult *= BIG_BET_MULT;
+        }
+        // special triple 7
         if(a === b && b === c){
           // triple
-          const multiplier = TRIPLE_BASE + (boost * 0.5);
-          payout = Math.floor(bet * multiplier);
-          casinoInfo.textContent = `Triple ${symA}! You win ${fmtCurrency(payout)}!`;
-          // effects
-          slotEls.forEach(el => el.classList.add('win'));
-          playWinSound();
+          payout = Math.floor(bet * tripleMult);
+          // extra boost if triple 7
+          if(symA === '7️⃣'){
+            payout = Math.floor(payout * (1 + (state.upgrades.megaJackpot || 0) * MEGA_7_BONUS));
+            elems.casinoInfo.textContent = `JACKPOT! Triple 7️⃣! Bạn thắng ${fmt(payout)}!`;
+          } else {
+            elems.casinoInfo.textContent = `Triple ${symA}! Bạn thắng ${fmt(payout)}!`;
+          }
+          elems.slotEls.forEach(el=> el.classList.add('win'));
+          if(audioCtx) soundWin();
         } else if(a === b || a === c || b === c){
-          const multiplier = PAIR_BASE + (boost / 10);
-          payout = Math.floor(bet * multiplier);
-          casinoInfo.textContent = `Pair! You win ${fmtCurrency(payout)}!`;
-          slotEls.forEach(el => el.classList.add('win'));
-          playWinSound();
+          payout = Math.floor(bet * pairMult);
+          elems.casinoInfo.textContent = `Pair! Bạn thắng ${fmt(payout)}!`;
+          elems.slotEls.forEach(el=> el.classList.add('win'));
+          if(audioCtx) soundWin();
         } else {
-          casinoInfo.textContent = `Bạn thua ${fmtCurrency(bet)}. Chúc may mắn lần sau.`;
-          // lose effect
-          slotsContainer.classList.add('shake');
-          slotEls.forEach(el => el.classList.add('lose'));
-          playLoseSound();
+          elems.casinoInfo.textContent = `Bạn thua ${fmt(bet)}.`;
+          elems.slotsContainer.classList.add('shake');
+          elems.slotEls.forEach(el=> el.classList.add('lose'));
+          if(audioCtx) soundLose();
         }
+
+        // apply payout and stats
         state.balance += payout;
         if(payout > 0) state.totalEarned += payout;
         spinning = false;
-        gambleBtn.disabled = false;
-        renderAll();
-      }, 1250);
-    });
-
-    maxBetBtn.addEventListener("click", ()=>{
-      const maxAllowed = Math.min(MAX_BET_GLOBAL, Math.floor(state.balance));
-      betInput.value = Math.max(1, maxAllowed);
-    });
-
-    betInput.addEventListener("keydown", (e)=>{ if(e.key === "Enter"){ gambleBtn.click(); } });
-
-    // ==== Tabs ====
-    function showTab(tab){
-      tabMoney.classList.toggle("active", tab === "money");
-      tabCasino.classList.toggle("active", tab === "casino");
-      tabShop.classList.toggle("active", tab === "shop");
-      moneyTab.style.display = tab === "money" ? "block" : "none";
-      casinoTab.style.display = tab === "casino" ? "block" : "none";
-      shopTab.style.display = tab === "shop" ? "block" : "none";
+        elems.gambleBtn.disabled = false;
+        save();
+        render();
+      }, 1300);
     }
-    tabMoney.addEventListener("click", ()=> showTab("money"));
-    tabCasino.addEventListener("click", ()=> showTab("casino"));
-    tabShop.addEventListener("click", ()=> showTab("shop"));
-    casinoBack.addEventListener("click", ()=> showTab("money"));
 
-    // initial render
-    renderAll();
+    elems.maxBetBtn.addEventListener('click', ()=>{
+      const maxAllowed = Math.min(MAX_BET_GLOBAL, Math.floor(state.balance));
+      elems.betInput.value = Math.max(1, maxAllowed);
+    });
 
-    // auto-save periodically
-    setInterval(saveState, 8000);
+    // ===== Export / Import Save =====
+    elems.exportBtn.addEventListener('click', ()=>{
+      const data = JSON.stringify(state);
+      const blob = new Blob([data], {type:'application/json'});
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url; a.download = 'mmg-save.json'; a.click();
+      URL.revokeObjectURL(url);
+    });
+    elems.importBtn.addEventListener('click', ()=>{
+      const input = document.createElement('input');
+      input.type = 'file'; input.accept = '.json,application/json';
+      input.onchange = e => {
+        const f = e.target.files[0];
+        if(!f) return;
+        const reader = new FileReader();
+        reader.onload = ev => {
+          try {
+            const obj = JSON.parse(ev.target.result);
+            state = obj;
+            applyUpgradesToStats();
+            save(); render();
+            alert('Import thành công!');
+          } catch(err){ alert('File không hợp lệ'); }
+        };
+        reader.readAsText(f);
+      };
+      input.click();
+    });
+
+    // ===== Save/Reset UI =====
+    elems.saveBtn.addEventListener('click', ()=> { save(); alert('Đã lưu!'); });
+    elems.resetBtn.addEventListener('click', ()=> {
+      if(confirm('Reset toàn bộ dữ liệu về mặc định?')){
+        localStorage.removeItem(SAVE_KEY);
+        state = { balance: 500, perClick:1, autoPerSec:0, totalEarned:0, upgrades:{clickPower:0,autoWorker:0,casinoBoost:0,megaJackpot:0}, bigBet:{active:false,cooldownUntil:0,activeUntil:0} };
+        applyUpgradesToStats(); save(); render();
+      }
+    });
+
+    // ===== Tabs logic =====
+    function showTab(name){
+      Object.keys(elems.panes).forEach(k=> elems.panes[k].style.display = (k===name)?'block':'none');
+      Object.keys(elems.tabs).forEach(k=> elems.tabs[k].classList.toggle('active', k===name));
+    }
+    elems.tabs.money.addEventListener('click', ()=> showTab('money'));
+    elems.tabs.income.addEventListener('click', ()=> showTab('income'));
+    elems.tabs.upgrades.addEventListener('click', ()=> showTab('upgrades'));
+    elems.tabs.casino.addEventListener('click', ()=> showTab('casino'));
+    elems.tabs.help.addEventListener('click', ()=> showTab('help'));
+    document.getElementById('casinoBack').addEventListener('click', ()=> showTab('money'));
+
+    // ===== Periodic save =====
+    setInterval(save, 8000);
+
+    // ===== Final render =====
+    render();
+
+    // ===== Notes for customization (inside the code) =====
+    // - Thay đổi payout: chỉnh BASE_TRIPLE, BASE_PAIR, MEGA_7_BONUS, và logic Big Bet
+    // - Thêm symbol: chỉnh SYMBOLS và base weights trong buildSymbolWeights()
+    // - Thêm upgrades: thêm mục vào SHOP array. Giá và tăng hiệu ứng do bạn quyết định.
+
   </script>
 </body>
 </html>
