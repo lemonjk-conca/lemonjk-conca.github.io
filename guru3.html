@@ -1,0 +1,737 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Thời Khóa Biểu Của Tôi</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        :root {
+            --primary: #6366f1;
+            --primary-dark: #4f46e5;
+            --bg-main: #f8fafc;
+            --bg-card: #ffffff;
+            --text-primary: #1e293b;
+            --text-secondary: #64748b;
+            --border: #e2e8f0;
+            --shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+            --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
+        }
+        
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+            background: var(--bg-main);
+            color: var(--text-primary);
+            line-height: 1.6;
+            padding-bottom: 80px;
+        }
+        
+        /* Header */
+        .header {
+            background: linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%);
+            color: white;
+            padding: 20px;
+            box-shadow: var(--shadow-lg);
+            position: sticky;
+            top: 0;
+            z-index: 100;
+        }
+        
+        .header-content {
+            max-width: 1200px;
+            margin: 0 auto;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        
+        .header h1 {
+            font-size: 1.5em;
+            font-weight: 700;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        
+        .header-actions {
+            display: flex;
+            gap: 10px;
+        }
+        
+        .btn {
+            padding: 10px 20px;
+            border: none;
+            border-radius: 8px;
+            font-size: 0.95em;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+        }
+        
+        .btn-primary {
+            background: white;
+            color: var(--primary);
+        }
+        
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(255, 255, 255, 0.3);
+        }
+        
+        .btn-secondary {
+            background: rgba(255, 255, 255, 0.2);
+            color: white;
+            border: 2px solid rgba(255, 255, 255, 0.3);
+        }
+        
+        .btn-secondary:hover {
+            background: rgba(255, 255, 255, 0.3);
+        }
+        
+        .btn-save {
+            background: #10b981;
+            color: white;
+        }
+        
+        .btn-save:hover {
+            background: #059669;
+        }
+        
+        /* Container */
+        .container {
+            max-width: 1200px;
+            margin: 30px auto;
+            padding: 0 20px;
+        }
+        
+        /* Week selector */
+        .week-selector {
+            background: var(--bg-card);
+            padding: 20px;
+            border-radius: 12px;
+            box-shadow: var(--shadow);
+            margin-bottom: 20px;
+            display: flex;
+            justify-content: center;
+            gap: 10px;
+            flex-wrap: wrap;
+        }
+        
+        .day-tab {
+            padding: 12px 24px;
+            border: 2px solid var(--border);
+            background: white;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            font-weight: 600;
+            color: var(--text-secondary);
+        }
+        
+        .day-tab:hover {
+            border-color: var(--primary);
+            color: var(--primary);
+        }
+        
+        .day-tab.active {
+            background: var(--primary);
+            color: white;
+            border-color: var(--primary);
+        }
+        
+        /* Timetable grid */
+        .timetable-container {
+            background: var(--bg-card);
+            padding: 20px;
+            border-radius: 12px;
+            box-shadow: var(--shadow);
+            overflow-x: auto;
+        }
+        
+        .timetable {
+            width: 100%;
+            border-collapse: separate;
+            border-spacing: 0;
+            min-width: 800px;
+        }
+        
+        .timetable th {
+            background: linear-gradient(135deg, #f1f5f9 0%, #e2e8f0 100%);
+            padding: 15px;
+            text-align: center;
+            font-weight: 700;
+            color: var(--text-primary);
+            border: 1px solid var(--border);
+            position: sticky;
+            top: 0;
+            z-index: 10;
+        }
+        
+        .timetable th:first-child {
+            border-top-left-radius: 8px;
+        }
+        
+        .timetable th:last-child {
+            border-top-right-radius: 8px;
+        }
+        
+        .timetable td {
+            border: 1px solid var(--border);
+            padding: 0;
+            height: 100px;
+            vertical-align: top;
+            background: white;
+            position: relative;
+        }
+        
+        .period-label {
+            background: linear-gradient(135deg, #fef3c7 0%, #fde68a 100%);
+            padding: 12px;
+            text-align: center;
+            font-weight: 600;
+            color: #92400e;
+            border: 1px solid var(--border);
+        }
+        
+        /* Class cell */
+        .class-cell {
+            height: 100%;
+            padding: 12px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+        }
+        
+        .class-cell:hover {
+            transform: scale(1.02);
+            box-shadow: inset 0 0 0 2px rgba(99, 102, 241, 0.5);
+        }
+        
+        .class-cell.empty {
+            background: #fafafa;
+            justify-content: center;
+            align-items: center;
+            color: #cbd5e1;
+            font-size: 0.9em;
+        }
+        
+        .class-cell.empty:hover {
+            background: #f1f5f9;
+            color: var(--primary);
+        }
+        
+        .subject-name {
+            font-weight: 700;
+            font-size: 1.05em;
+            margin-bottom: 4px;
+        }
+        
+        .class-info {
+            font-size: 0.85em;
+            color: rgba(0, 0, 0, 0.7);
+            display: flex;
+            align-items: center;
+            gap: 4px;
+        }
+        
+        .class-info span {
+            display: flex;
+            align-items: center;
+            gap: 3px;
+        }
+        
+        /* Subject colors */
+        .subject-toan { background: linear-gradient(135deg, #dbeafe 0%, #bfdbfe 100%); }
+        .subject-van { background: linear-gradient(135deg, #fce7f3 0%, #fbcfe8 100%); }
+        .subject-anh { background: linear-gradient(135deg, #dcfce7 0%, #bbf7d0 100%); }
+        .subject-ly { background: linear-gradient(135deg, #fef3c7 0%, #fde68a 100%); }
+        .subject-hoa { background: linear-gradient(135deg, #e0e7ff 0%, #c7d2fe 100%); }
+        .subject-sinh { background: linear-gradient(135deg, #d1fae5 0%, #a7f3d0 100%); }
+        .subject-su { background: linear-gradient(135deg, #fed7aa 0%, #fdba74 100%); }
+        .subject-dia { background: linear-gradient(135deg, #ddd6fe 0%, #c4b5fd 100%); }
+        .subject-gdcd { background: linear-gradient(135deg, #fecaca 0%, #fca5a5 100%); }
+        .subject-td { background: linear-gradient(135deg, #a5f3fc 0%, #67e8f9 100%); }
+        .subject-tin { background: linear-gradient(135deg, #d4d4d8 0%, #a1a1aa 100%); }
+        .subject-khac { background: linear-gradient(135deg, #fef9c3 0%, #fef08a 100%); }
+        
+        /* Modal */
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.5);
+            z-index: 1000;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+        }
+        
+        .modal.active {
+            display: flex;
+            animation: fadeIn 0.3s ease;
+        }
+        
+        .modal-content {
+            background: white;
+            padding: 30px;
+            border-radius: 16px;
+            max-width: 500px;
+            width: 100%;
+            box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.3);
+            animation: slideUp 0.3s ease;
+        }
+        
+        .modal-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+        }
+        
+        .modal-header h2 {
+            font-size: 1.5em;
+            color: var(--primary);
+        }
+        
+        .close-btn {
+            background: none;
+            border: none;
+            font-size: 1.8em;
+            cursor: pointer;
+            color: var(--text-secondary);
+            width: 32px;
+            height: 32px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 50%;
+            transition: all 0.3s ease;
+        }
+        
+        .close-btn:hover {
+            background: #f1f5f9;
+            color: var(--text-primary);
+        }
+        
+        .form-group {
+            margin-bottom: 20px;
+        }
+        
+        .form-group label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: 600;
+            color: var(--text-primary);
+        }
+        
+        .form-group input,
+        .form-group select {
+            width: 100%;
+            padding: 12px;
+            border: 2px solid var(--border);
+            border-radius: 8px;
+            font-size: 1em;
+            transition: all 0.3s ease;
+        }
+        
+        .form-group input:focus,
+        .form-group select:focus {
+            outline: none;
+            border-color: var(--primary);
+            box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.1);
+        }
+        
+        .modal-actions {
+            display: flex;
+            gap: 10px;
+            margin-top: 25px;
+        }
+        
+        .btn-full {
+            flex: 1;
+            justify-content: center;
+        }
+        
+        .btn-danger {
+            background: #ef4444;
+            color: white;
+        }
+        
+        .btn-danger:hover {
+            background: #dc2626;
+        }
+        
+        /* Legend */
+        .legend {
+            background: var(--bg-card);
+            padding: 20px;
+            border-radius: 12px;
+            box-shadow: var(--shadow);
+            margin-top: 20px;
+        }
+        
+        .legend h3 {
+            margin-bottom: 15px;
+            color: var(--text-primary);
+        }
+        
+        .legend-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+            gap: 10px;
+        }
+        
+        .legend-item {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 8px;
+            border-radius: 6px;
+            font-size: 0.9em;
+        }
+        
+        .legend-color {
+            width: 24px;
+            height: 24px;
+            border-radius: 4px;
+            border: 2px solid rgba(0, 0, 0, 0.1);
+        }
+        
+        /* Animations */
+        @keyframes fadeIn {
+            from { opacity: 0; }
+            to { opacity: 1; }
+        }
+        
+        @keyframes slideUp {
+            from {
+                opacity: 0;
+                transform: translateY(30px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+        
+        /* Responsive */
+        @media (max-width: 768px) {
+            .header h1 {
+                font-size: 1.2em;
+            }
+            
+            .header-actions {
+                flex-direction: column;
+                width: 100%;
+            }
+            
+            .btn {
+                width: 100%;
+                justify-content: center;
+            }
+            
+            .day-tab {
+                flex: 1;
+                min-width: 80px;
+                text-align: center;
+            }
+            
+            .timetable-container {
+                padding: 10px;
+            }
+            
+            .legend-grid {
+                grid-template-columns: repeat(2, 1fr);
+            }
+        }
+    </style>
+</head>
+<body>
+    <!-- Header -->
+    <div class="header">
+        <div class="header-content">
+            <h1>📚 Thời Khóa Biểu</h1>
+            <div class="header-actions">
+                <button class="btn btn-primary" onclick="showAllSchedule()">
+                    📅 Xem Toàn Bộ
+                </button>
+                <button class="btn btn-secondary" onclick="clearAllData()">
+                    🗑️ Xóa Tất Cả
+                </button>
+            </div>
+        </div>
+    </div>
+    
+    <div class="container">
+        <!-- Week selector -->
+        <div class="week-selector" id="weekSelector"></div>
+        
+        <!-- Timetable -->
+        <div class="timetable-container">
+            <table class="timetable" id="timetable"></table>
+        </div>
+        
+        <!-- Legend -->
+        <div class="legend">
+            <h3>🎨 Màu Sắc Môn Học</h3>
+            <div class="legend-grid" id="legendGrid"></div>
+        </div>
+    </div>
+    
+    <!-- Modal -->
+    <div class="modal" id="editModal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>✏️ Chỉnh Sửa Tiết Học</h2>
+                <button class="close-btn" onclick="closeModal()">&times;</button>
+            </div>
+            
+            <form id="editForm">
+                <div class="form-group">
+                    <label for="subjectSelect">Môn học</label>
+                    <select id="subjectSelect" required>
+                        <option value="">-- Chọn môn học --</option>
+                        <option value="Toán">Toán</option>
+                        <option value="Văn">Văn</option>
+                        <option value="Tiếng Anh">Tiếng Anh</option>
+                        <option value="Vật Lý">Vật Lý</option>
+                        <option value="Hóa Học">Hóa Học</option>
+                        <option value="Sinh Học">Sinh Học</option>
+                        <option value="Lịch Sử">Lịch Sử</option>
+                        <option value="Địa Lý">Địa Lý</option>
+                        <option value="GDCD">GDCD</option>
+                        <option value="Thể Dục">Thể Dục</option>
+                        <option value="Tin Học">Tin Học</option>
+                        <option value="Khác">Khác</option>
+                    </select>
+                </div>
+                
+                <div class="form-group">
+                    <label for="roomInput">Phòng học</label>
+                    <input type="text" id="roomInput" placeholder="VD: A201" required>
+                </div>
+                
+                <div class="form-group">
+                    <label for="teacherInput">Giáo viên</label>
+                    <input type="text" id="teacherInput" placeholder="VD: Thầy Nguyễn Văn A" required>
+                </div>
+                
+                <div class="modal-actions">
+                    <button type="submit" class="btn btn-save btn-full">
+                        💾 Lưu
+                    </button>
+                    <button type="button" class="btn btn-danger btn-full" onclick="deleteClass()">
+                        🗑️ Xóa
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+    
+    <script>
+        // Dữ liệu
+        const days = ['Thứ 2', 'Thứ 3', 'Thứ 4', 'Thứ 5', 'Thứ 6', 'Thứ 7'];
+        const periods = ['Tiết 1', 'Tiết 2', 'Tiết 3', 'Tiết 4', 'Tiết 5'];
+        
+        let schedule = JSON.parse(localStorage.getItem('schedule')) || {};
+        let currentView = 'all';
+        let currentDay = '';
+        let editingCell = null;
+        
+        const subjectColors = {
+            'Toán': 'subject-toan',
+            'Văn': 'subject-van',
+            'Tiếng Anh': 'subject-anh',
+            'Vật Lý': 'subject-ly',
+            'Hóa Học': 'subject-hoa',
+            'Sinh Học': 'subject-sinh',
+            'Lịch Sử': 'subject-su',
+            'Địa Lý': 'subject-dia',
+            'GDCD': 'subject-gdcd',
+            'Thể Dục': 'subject-td',
+            'Tin Học': 'subject-tin',
+            'Khác': 'subject-khac'
+        };
+        
+        // Render week selector
+        function renderWeekSelector() {
+            const selector = document.getElementById('weekSelector');
+            selector.innerHTML = `
+                <div class="day-tab ${currentView === 'all' ? 'active' : ''}" onclick="showAllSchedule()">
+                    📅 Cả Tuần
+                </div>
+                ${days.map((day, i) => `
+                    <div class="day-tab ${currentView === 'day' && currentDay === day ? 'active' : ''}" 
+                         onclick="showDaySchedule('${day}')">
+                        ${day}
+                    </div>
+                `).join('')}
+            `;
+        }
+        
+        // Show all schedule
+        function showAllSchedule() {
+            currentView = 'all';
+            renderWeekSelector();
+            renderTimetable();
+        }
+        
+        // Show day schedule
+        function showDaySchedule(day) {
+            currentView = 'day';
+            currentDay = day;
+            renderWeekSelector();
+            renderTimetable();
+        }
+        
+        // Render timetable
+        function renderTimetable() {
+            const table = document.getElementById('timetable');
+            const displayDays = currentView === 'all' ? days : [currentDay];
+            
+            let html = '<thead><tr><th>Tiết</th>';
+            displayDays.forEach(day => {
+                html += `<th>${day}</th>`;
+            });
+            html += '</tr></thead><tbody>';
+            
+            periods.forEach((period, pIndex) => {
+                html += `<tr><td class="period-label">${period}</td>`;
+                
+                displayDays.forEach((day, dIndex) => {
+                    const key = `${day}-${period}`;
+                    const classData = schedule[key];
+                    
+                    if (classData) {
+                        const colorClass = subjectColors[classData.subject] || 'subject-khac';
+                        html += `
+                            <td onclick="openEditModal('${key}')">
+                                <div class="class-cell ${colorClass}">
+                                    <div class="subject-name">${classData.subject}</div>
+                                    <div class="class-info">
+                                        <span>🏫 ${classData.room}</span>
+                                    </div>
+                                    <div class="class-info">
+                                        <span>👨‍🏫 ${classData.teacher}</span>
+                                    </div>
+                                </div>
+                            </td>
+                        `;
+                    } else {
+                        html += `
+                            <td onclick="openEditModal('${key}')">
+                                <div class="class-cell empty">
+                                    ➕ Thêm môn học
+                                </div>
+                            </td>
+                        `;
+                    }
+                });
+                
+                html += '</tr>';
+            });
+            
+            html += '</tbody>';
+            table.innerHTML = html;
+        }
+        
+        // Render legend
+        function renderLegend() {
+            const legend = document.getElementById('legendGrid');
+            legend.innerHTML = Object.keys(subjectColors).map(subject => `
+                <div class="legend-item ${subjectColors[subject]}">
+                    <div class="legend-color ${subjectColors[subject]}"></div>
+                    <span>${subject}</span>
+                </div>
+            `).join('');
+        }
+        
+        // Open modal
+        function openEditModal(key) {
+            editingCell = key;
+            const modal = document.getElementById('editModal');
+            const form = document.getElementById('editForm');
+            
+            const classData = schedule[key];
+            if (classData) {
+                document.getElementById('subjectSelect').value = classData.subject;
+                document.getElementById('roomInput').value = classData.room;
+                document.getElementById('teacherInput').value = classData.teacher;
+            } else {
+                form.reset();
+            }
+            
+            modal.classList.add('active');
+        }
+        
+        // Close modal
+        function closeModal() {
+            document.getElementById('editModal').classList.remove('active');
+            editingCell = null;
+        }
+        
+        // Save class
+        document.getElementById('editForm').addEventListener('submit', function(e) {
+            e.preventDefault();
+            
+            if (!editingCell) return;
+            
+            schedule[editingCell] = {
+                subject: document.getElementById('subjectSelect').value,
+                room: document.getElementById('roomInput').value,
+                teacher: document.getElementById('teacherInput').value
+            };
+            
+            localStorage.setItem('schedule', JSON.stringify(schedule));
+            closeModal();
+            renderTimetable();
+        });
+        
+        // Delete class
+        function deleteClass() {
+            if (!editingCell) return;
+            
+            if (confirm('Bạn có chắc muốn xóa tiết học này?')) {
+                delete schedule[editingCell];
+                localStorage.setItem('schedule', JSON.stringify(schedule));
+                closeModal();
+                renderTimetable();
+            }
+        }
+        
+        // Clear all data
+        function clearAllData() {
+            if (confirm('Xóa toàn bộ thời khóa biểu? Hành động này không thể hoàn tác!')) {
+                schedule = {};
+                localStorage.removeItem('schedule');
+                renderTimetable();
+            }
+        }
+        
+        // Close modal when clicking outside
+        document.getElementById('editModal').addEventListener('click', function(e) {
+            if (e.target === this) {
+                closeModal();
+            }
+        });
+        
+        // Initialize
+        renderWeekSelector();
+        renderTimetable();
+        renderLegend();
+    </script>
+</body>
+</html>
